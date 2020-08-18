@@ -1,0 +1,175 @@
+---
+title: 'Threats & responses to plant extinction worldwide'
+subtitle: 'Tidy Tuesday 2020-08-18'
+author: 'Shelby Bachman'
+output: 
+  html_document:
+    theme: sandstone
+    highlight: tango
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+
+library(tidyverse)
+library(janitor)
+library(kableExtra)
+library(ggpubr)
+library(ggthemr)
+
+ggthemr('light')
+
+```
+Data used here comes from the [International Union for Conservation of Nature (IUCN) Red List of Threatened Species (Version 2020-1)](https://www.iucnredlist.org/). <br>It was repared by [Florent Lavergne](https://www.behance.net/florentlavergne).
+
+```{r load_data, include = FALSE}
+
+data <- tidytuesdayR::tt_load('2020-08-18')
+plants <- data$plants
+rm(data)
+
+```
+
+```{r clean_data, include = FALSE}
+
+# convert action data from wide to long & rename action types
+actions <- plants %>%
+  select(-contains('threat')) %>%
+  pivot_longer(cols = contains('action'),
+               names_to = 'action_type',
+               names_prefix = 'action_',
+               values_to = 'action_taken', 
+               values_drop_na = TRUE) %>%
+  mutate(action_type = case_when(
+    action_type == 'LWP' ~ 'Land & Water Protection',
+    action_type == 'SM' ~ 'Species Management',
+    action_type == 'LP' ~ 'Law & Policy',
+    action_type == 'RM' ~ 'Research & Monitoring',
+    action_type == 'EA' ~ 'Education & Awareness',
+    action_type == 'NA' ~ 'Current action unknown'
+  ))
+
+# conver threat data from wide to long and rename threat types
+threats <- plants %>%
+  select(-contains('action')) %>%
+  pivot_longer(cols = contains('threat'),
+               names_to = 'threat_type',
+               names_prefix = 'threat_',
+               values_to = 'threatened',
+               values_drop_na = TRUE) %>%
+  mutate(threat_type = case_when(
+    threat_type == 'AA' ~ 'Agriculture & Aquaculture',
+    threat_type == 'BRU' ~ 'Biological Resource Use',
+    threat_type == 'RCD' ~ 'Commercial Development',
+    threat_type == 'ISGD' ~ 'Invasive Species',
+    threat_type == 'EPM' ~ 'Energy Production & Mining',
+    threat_type == 'CC' ~ 'Climate Change',
+    threat_type == 'HID' ~ 'Human Intrusions',
+    threat_type == 'P' ~ 'Pollution',
+    threat_type == 'TS' ~ 'Transportation Corridor',
+    threat_type == 'NSM' ~ 'Natural System Modifications',
+    threat_type == 'GE' ~ 'Geological Events',
+    threat_type == 'NA' ~ 'Threat unknown'
+  ))
+
+```
+
+```{r filter_data, include = FALSE}
+
+# filter action data to include only plants for which action was taken
+actions <- actions %>%
+  filter(action_taken == 1)
+
+# filter threat data to include only threatened plants
+threats <- threats %>%
+  filter(threatened == 1)
+
+```
+
+## What factors threaten plant existence?
+
+```{r viz_threatened, echo = FALSE}
+
+summary_threats <- threats %>%
+  group_by(threat_type) %>%
+  summarise(tot_threatened = sum(threatened, na.rm = TRUE), .groups = NULL)
+
+ggplot(data = summary_threats, 
+       mapping = aes(x = tot_threatened,
+                     size = tot_threatened,
+                     y = threat_type)) +
+ #                    y = reorder(threat_type, tot_threatened))) +
+  geom_point(aes(size = tot_threatened), col = '#8ABD91') +
+  labs(x = '# of threatened plant species worldwide', y = '', size = '') +
+  guides(size = FALSE)
+
+```
+
+### Threatened plants by country
+
+The visualization below includes only countries with more than 5 threatened species.
+
+```{r viz_threatened_country, echo = FALSE}
+
+summary_country_threat <- threats %>%
+  group_by(country) %>%
+  summarise(tot_threatened = sum(threatened, na.rm = TRUE), .groups = NULL) %>%
+  left_join(threats %>% select(country, continent), by = 'country')
+
+ggplot(data = summary_country_threat %>% filter(tot_threatened > 5), 
+       mapping = aes(x = tot_threatened,
+                     y = reorder(country, tot_threatened),
+                     colour = factor(continent))) +
+  labs(x = '# of threatened plant species', y = '', colour = 'continent') +
+  geom_point(size = 3)
+
+```
+
+## What actions are being taken to counter these threats?
+
+```{r viz_actions, echo = FALSE}
+
+summary_actions <- actions %>%
+  group_by(action_type) %>%
+  summarise(tot_actions = sum(action_taken, na.rm = TRUE), .groups = NULL)
+
+ggplot(data = summary_actions, 
+       mapping = aes(x = tot_actions,
+                     size = tot_actions,
+                     y = action_type)) +
+  geom_point(aes(size = tot_actions), col = '#8ABD91') +
+  labs(x = '# of actions reports worldwide', y = '', size = '') +
+  guides(size = FALSE)
+
+```
+
+
+### Actions taken by country
+
+The visualization below includes only countries which have taken more than 5 actions and does not include reports in which the action type was unknown.
+
+```{r viz_action_country, echo = FALSE}
+
+summary_country_action <- actions %>%
+  filter(action_type == 'Current action unknown') %>%
+  group_by(country) %>%
+  summarise(tot_action = sum(action_taken, na.rm = TRUE), .groups = NULL) %>%
+  left_join(actions %>% select(country, continent), by = 'country')
+
+ggplot(data = summary_country_action %>% filter(tot_action > 3),
+       mapping = aes(x = tot_action,
+                     y = reorder(country, tot_action),
+                     colour = factor(continent))) +
+  labs(x = '# of actions taken', y = '', colour = 'continent') +
+  geom_point(size = 3)
+
+# to add below:
+#https://www.r-graph-gallery.com/choropleth-map.html
+#https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html
+
+```
