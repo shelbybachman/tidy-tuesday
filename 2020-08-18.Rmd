@@ -21,11 +21,14 @@ library(janitor)
 library(kableExtra)
 library(ggpubr)
 library(ggthemr)
-
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
 ggthemr('light')
 
 ```
-Data used here comes from the [International Union for Conservation of Nature (IUCN) Red List of Threatened Species (Version 2020-1)](https://www.iucnredlist.org/). <br>It was repared by [Florent Lavergne](https://www.behance.net/florentlavergne).
+
+Data used here comes from the [International Union for Conservation of Nature (IUCN) Red List of Threatened Species (Version 2020-1)](https://www.iucnredlist.org/). <br>It was prepared by [Florent Lavergne](https://www.behance.net/florentlavergne).
 
 ```{r load_data, include = FALSE}
 
@@ -93,7 +96,7 @@ threats <- threats %>%
 
 ## What factors threaten plant existence?
 
-```{r viz_threatened, echo = FALSE}
+```{r viz_threatened, echo = FALSE, fig.width = 5}
 
 summary_threats <- threats %>%
   group_by(threat_type) %>%
@@ -105,14 +108,14 @@ ggplot(data = summary_threats,
                      y = threat_type)) +
  #                    y = reorder(threat_type, tot_threatened))) +
   geom_point(aes(size = tot_threatened), col = '#8ABD91') +
-  labs(x = '# of threatened plant species worldwide', y = '', size = '') +
+  labs(x = 'Number of threatened plant species worldwide', y = '', size = '') +
   guides(size = FALSE)
 
 ```
 
 ### Threatened plants by country
 
-The visualization below includes only countries with more than 5 threatened species.
+The visualizations below includes only countries with more than 5 threatened species.
 
 ```{r viz_threatened_country, echo = FALSE}
 
@@ -125,14 +128,28 @@ ggplot(data = summary_country_threat %>% filter(tot_threatened > 5),
        mapping = aes(x = tot_threatened,
                      y = reorder(country, tot_threatened),
                      colour = factor(continent))) +
-  labs(x = '# of threatened plant species', y = '', colour = 'continent') +
+  labs(x = 'Number of threatened plant species', y = '', colour = 'continent') +
   geom_point(size = 3)
+
+```
+```{r map_threats, echo = FALSE}
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+world_joined <- world %>%
+  left_join(summary_country_threat %>% filter(tot_threatened > 5) %>%
+              select(name = country, tot_threatened), 
+            by = 'name')
+
+ggplot(data = world_joined) +
+  geom_sf(aes(fill = tot_threatened)) +
+  labs(fill = 'Threatened species')
 
 ```
 
 ## What actions are being taken to counter these threats?
 
-```{r viz_actions, echo = FALSE}
+```{r viz_actions, echo = FALSE, fig.width = 5, fig.height = 3}
 
 summary_actions <- actions %>%
   group_by(action_type) %>%
@@ -143,15 +160,14 @@ ggplot(data = summary_actions,
                      size = tot_actions,
                      y = action_type)) +
   geom_point(aes(size = tot_actions), col = '#8ABD91') +
-  labs(x = '# of actions reports worldwide', y = '', size = '') +
+  labs(x = 'Number of actions taken worldwide', y = '', size = '') +
   guides(size = FALSE)
 
 ```
 
-
 ### Actions taken by country
 
-The visualization below includes only countries which have taken more than 5 actions and does not include reports in which the action type was unknown.
+The visualization below includes only countries which have taken more than 3 actions and does not include reports in which the action type was unknown.
 
 ```{r viz_action_country, echo = FALSE}
 
@@ -165,11 +181,20 @@ ggplot(data = summary_country_action %>% filter(tot_action > 3),
        mapping = aes(x = tot_action,
                      y = reorder(country, tot_action),
                      colour = factor(continent))) +
-  labs(x = '# of actions taken', y = '', colour = 'continent') +
+  labs(x = 'Number of actions taken', y = '', colour = 'continent') +
   geom_point(size = 3)
 
-# to add below:
-#https://www.r-graph-gallery.com/choropleth-map.html
-#https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html
+```
+
+```{r map_actions, echo = FALSE}
+
+world_joined <- world %>%
+  left_join(summary_country_action %>% filter(tot_action > 3) %>%
+              select(name = country, tot_action), 
+            by = 'name')
+
+ggplot(data = world_joined) +
+  geom_sf(aes(fill = tot_action)) +
+  labs(fill = 'Actions taken')
 
 ```
