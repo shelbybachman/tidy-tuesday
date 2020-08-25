@@ -1,0 +1,221 @@
+---
+title: 'Chopped ratings & ingredients'
+subtitle: 'Tidy Tuesday 2020-08-25'
+author: 'Shelby Bachman'
+output: 
+  html_document:
+    theme: flatly
+    highlight: default
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(ggpubr)
+library(extrafont)
+library(patchwork)
+
+```
+
+Today's data comes from [Kaggle](https://www.kaggle.com/jeffreybraun/chopped-10-years-of-episode-data) courtesy of Jeffrey Braun and [Nick Wan](https://twitter.com/nickwan/status/1291586894145490944?s=20).
+
+This week we are exploring data from **Chopped**, a reality-based cooking television game show series. In each episode of this show four chefs compete in a three-course contest, where they attempt to incorporate unusual combinations of ingredients into dishes that are evaluated by a panel of judges. At the beginning of each course (appetizer, entree, and dessert), the chefs are each given a basket containing four mystery ingredients and are expected to create dishes that use all of them in some way. 
+
+Below I do some basic exploration of how ratings evolved across the lifetime of the show and the most frequent ingredients used in the show.
+
+<hr>
+
+```{r load_data, include = FALSE}
+
+chopped <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-25/chopped.tsv')
+
+```
+
+```{r split_ingredients, include = FALSE}
+
+# separate ingredients from each course
+chopped <- chopped %>%
+  rowwise() %>%
+  separate(appetizer, into = c('app_1', 'app_2', 'app_3', 'app_4'), 
+           sep = ', ', extra = 'merge') %>%
+  separate(entree, into = c('entree_1', 'entree_2', 'entree_3', 'entree_4', 'entree_5'), 
+           sep = ', ', extra = 'merge') %>%
+  separate(dessert, into = c('dessert_1', 'dessert_2', 'dessert_3', 'dessert_4', 'dessert_5'),
+           sep = ', ', extra = 'merge')
+
+```
+
+```{r fig_ratings, fig.width = 8}
+
+ggplot(data = chopped %>% filter(season <= 40), 
+       aes(x = season, y = episode_rating)) +
+  geom_point(size = 2, alpha = 0.5, colour = '#9BC1BC') +
+  geom_path(data = chopped %>% 
+              filter(season <= 40) %>%
+              group_by(season) %>% 
+              summarise(episode_rating = mean(episode_rating, na.rm = TRUE)),
+            size = 2) +
+  labs(x = 'Season', y = 'Episode Rating') +
+  scale_x_continuous(breaks = seq(5, 40, 5)) +
+  scale_y_continuous(breaks = seq(5, 10, 1)) +
+  theme_pubr() +
+  theme(text = element_text(size=16,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank()) +
+  plot_annotation(
+  title = "How did ratings of chopped evolve across all 40 seasons?",
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato'))
+  )
+
+```
+<hr>
+
+```{r transform_data, include = FALSE}
+
+chopped_long <- as.data.frame(
+  rbind(
+    chopped %>%
+      select(season, season_episode, episode_rating, app_1:app_4) %>%
+      pivot_longer(cols = app_1:app_4, 
+                   names_to = 'ingredient_no', 
+                   names_prefix = 'app_',
+                   values_to = 'ingredient', 
+                   values_drop_na = TRUE) %>%
+      mutate(course = 'appetizer'),
+    
+    chopped %>%
+      select(season, season_episode, episode_rating, entree_1:entree_5) %>%
+      pivot_longer(cols = entree_1:entree_5, 
+                   names_to = 'ingredient_no', 
+                   names_prefix = 'entree_',
+                   values_to = 'ingredient', 
+                   values_drop_na = TRUE) %>%
+      mutate(course = 'entree'),
+    
+    chopped %>%
+      select(season, season_episode, episode_rating, dessert_1:dessert_5) %>%
+      pivot_longer(cols = dessert_1:dessert_5, 
+                   names_to = 'ingredient_no', 
+                   names_prefix = 'dessert_',
+                   values_to = 'ingredient', 
+                   values_drop_na = TRUE) %>%
+      mutate(course = 'dessert')
+  )
+) %>%
+  mutate(ingredient = str_to_lower(ingredient))
+
+summary_ingredients <- chopped_long %>%
+  group_by(ingredient, course) %>%
+  summarise(count = n())
+
+summary_ingredients_all <- chopped_long %>%
+  group_by(ingredient) %>%
+  summarise(count = n()) 
+
+```
+
+```{r fig_ingredients, include = FALSE}
+
+p_app <- ggplot(summary_ingredients %>% 
+         filter(course == 'appetizer', count > 4),
+       aes(x = reorder(ingredient, count), y = count)) +
+  geom_segment(aes(xend = ingredient, yend = 4)) +
+  geom_point(size = 4, colour = '#ED6A5A') +
+  coord_cartesian(ylim = c(4, 10)) +
+  scale_y_continuous(breaks = seq(4, 10)) +
+  labs(x = '', y = 'frequency') +
+  annotate('text', x = 7, y = 7.5, label = 'appetizers', 
+           colour = '#ED6A5A', size = 6, family = 'Lato') +
+  coord_flip() +
+  theme_pubr() + 
+  theme(text = element_text(size=10,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank())
+
+p_entree <- ggplot(summary_ingredients %>% 
+         filter(course == 'entree', count > 4),
+       aes(x = reorder(ingredient, count), y = count)) +
+  geom_segment(aes(xend = ingredient, yend = 4)) +
+  geom_point(size = 4, colour = '#E5DF61') +
+  coord_cartesian(ylim = c(4, 12)) +
+  scale_y_continuous(breaks = seq(4, 12)) +
+  labs(x = '', y = 'frequency') +
+  annotate('text', x = 11, y = 9, label = 'entrees', 
+           colour = '#E5DF61', size = 6, family = 'Lato') +
+  coord_flip() +
+  theme_pubr() + 
+  theme(text = element_text(size=10,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank())
+
+p_dessert <- ggplot(summary_ingredients %>% 
+         filter(course == 'dessert', count > 4),
+       aes(x = reorder(ingredient, count), y = count)) +
+  geom_segment(aes(xend = ingredient, yend = 4)) +
+  geom_point(size = 4, colour = '#5D576B') +
+  coord_cartesian(ylim = c(4, 13)) +
+  scale_y_continuous(breaks = seq(4, 13)) +
+  labs(x = '', y = 'frequency') +
+  annotate('text', x = 10, y = 9, label = 'dessert', 
+           colour = '#5D576B', size = 6, family = 'Lato') +
+  coord_flip() +
+  theme_pubr() + 
+  theme(text = element_text(size=10,  family='Lato'),
+        axis.text.x = element_text(size = 8, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank())
+
+
+```
+
+```{r fig_overall, include = FALSE}
+
+p_all <- ggplot(summary_ingredients_all %>% 
+         filter(count > 9),
+       aes(x = reorder(ingredient, count), y = count)) +
+  geom_segment(aes(xend = ingredient, yend = 9)) +
+  geom_point(size = 4, colour = '#9BC1BC') +
+  coord_cartesian(ylim = c(9, 15)) +
+  scale_y_continuous(breaks = seq(9, 15)) +
+  labs(x = '', y = 'frequency') +
+  annotate('text', x = 13, y = 14, label = 'all courses', 
+           colour = '#9BC1BC', size = 8, family = 'Lato') +
+  coord_flip() +
+  theme_pubr() + 
+  theme(text = element_text(size=10,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank())
+
+```
+
+```{r fig_compile, fig.width = 10, fig.height = 12}
+
+layout <- p_all / (p_app | p_entree | p_dessert)
+
+layout +
+  plot_annotation(
+  title = "What were the most commmon ingredients?",
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato'))
+  )
+
+```
