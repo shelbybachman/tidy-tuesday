@@ -1,6 +1,5 @@
 # shelby's tidy tuesday projects
-
-<hr>
+<br>
 
 [2020-08-25](https://shelbybachman.github.io/tidy-tuesday/2020-08-25.html): chopped ratings & ingredients
 
