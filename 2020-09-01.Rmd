@@ -1,0 +1,217 @@
+---
+title: 'Global crop yields & arable land over time'
+subtitle: 'Tidy Tuesday 2020-09-01'
+author: 'Shelby Bachman'
+output: 
+  html_document:
+    theme: flatly
+    highlight: default
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+
+```
+
+Today's dataset comes from [Our World's Data](https://ourworldindata.org/crop-yields) and includes metrics on agricultural yields and arable land availability across regions and time.
+
+<hr>
+
+```{r load_data, include = FALSE}
+
+key_crops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-01/key_crop_yields.csv')
+fertilizer <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-01/cereal_crop_yield_vs_fertilizer_application.csv')
+tractors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-01/cereal_yields_vs_tractor_inputs_in_agriculture.csv')
+land_use <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-01/land_use_vs_yield_change_in_cereal_production.csv')
+arable_land <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-01/arable_land_pin.csv')
+
+```
+
+```{r reshape_data, include = FALSE}
+
+key_crops_long <- key_crops %>% 
+  pivot_longer(cols = 4:last_col(),
+               names_to = "crop", 
+               values_to = "yield") %>% 
+  mutate(crop = str_remove_all(crop, " \\(tonnes per hectare\\)")) %>% 
+  set_names(nm = names(.) %>% tolower())
+
+key_crops_long$entity <- str_replace(key_crops_long$entity, 'Northern America', 'North America')
+key_crops_long$entity <- str_replace(key_crops_long$entity, 'Australia & New Zealand', 'Australia & NZ')
+
+fertilizer <- fertilizer %>%
+  rename(fertilizer_use = `Nitrogen fertilizer use (kilograms per hectare)`) %>%
+  set_names(nm = names(.) %>% tolower()) %>%
+  select(entity, code, year, fertilizer_use)
+  
+fertilizer$entity <- str_replace(fertilizer$entity, 'Northern America', 'North America')
+fertilizer$entity <- str_replace(fertilizer$entity, 'Australia & New Zealand', 'Australia & NZ')
+
+arable_land <- arable_land %>%
+  rename(arable_land = `Arable land needed to produce a fixed quantity of crops ((1.0 = 1961))`) %>%
+  set_names(nm = names(.) %>% tolower())
+
+arable_land$entity <- str_replace(arable_land$entity, 'Northern America', 'North America')
+arable_land$entity <- str_replace(arable_land$entity, 'Australia & New Zealand', 'Australia & NZ')
+
+```
+
+<center>
+
+```{r yields_time, fig.width = 7, fig.height = 5}
+
+regions <- c('Africa', 'Asia', 'Europe', 'Australia & NZ', 'North America', 'South America')
+
+col_palette <- c('Africa' = '#E26D5C',
+                 'Asia' = '#FFC482',
+                 'Europe' = '#B3AF8F',
+                 'Australia & NZ' = '#66999B',
+                 'North America' = '#2B3A67',
+                 'South America' = '#5B3442')
+
+key_crops_summary <- key_crops_long %>%
+  filter(entity %in% regions) %>%
+  group_by(entity, year) %>%
+  summarise(total_yield = sum(yield, na.rm = TRUE))
+
+ggplot(data = key_crops_summary %>%
+         arrange(entity), 
+       aes(x = year, y = total_yield, colour = entity, group = entity)) +
+  geom_line() +
+  scale_colour_manual(values = col_palette) +
+  labs(x = '', y = 'Total crop yield (tons/hectare)', group = '', colour = '') +
+  scale_x_continuous(breaks = seq(1960, 2020, 5)) +
+  theme_pubr() +
+  theme(text = element_text(size=14,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank()) +
+  plot_annotation(
+  title = "Total crop yields by region",
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'))
+  )
+
+```
+
+```{r crops_byregion, fig.width = 9, fig.height = 5}
+
+key_crops_summary2 <- key_crops_long %>%
+  filter(entity %in% regions,
+         year %in% c(1961, 2018)) %>%  
+  group_by(entity, crop, year) %>%
+  summarise(total_yield = sum(yield, na.rm = TRUE)) %>%
+  mutate(total_yield = ifelse(total_yield < 2, NA, total_yield))
+
+p_crops <- ggarrange(
+  ggplot(key_crops_summary2 %>% filter(year == 1961),
+       aes(x = crop, y = total_yield)) +
+  geom_segment(aes(xend = crop, yend = 0)) +
+  geom_point(aes(colour = entity), size = 2) +
+#  coord_cartesian(ylim = c(4, 10)) +
+#  scale_y_continuous(breaks = seq(4, 10)) +
+  scale_colour_manual(values = col_palette) +
+  labs(x = '', y = 'Total yield (tons/hectare)', title = '1968') +
+  coord_flip() +
+  facet_wrap(~entity) + guides(colour = FALSE) +
+  theme_pubr() + 
+  theme(text = element_text(size=10,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank(), 
+        plot.title = element_text(size = 16, family='Lato', face='bold')),
+
+  ggplot(key_crops_summary2 %>% filter(year == 2018),
+       aes(x = crop, y = total_yield)) +
+  geom_segment(aes(xend = crop, yend = 0)) +
+  geom_point(aes(colour = entity), size = 2) +
+  scale_colour_manual(values = col_palette) +
+  labs(x = '', y = 'Total yield (tons/hectare)', title = '2018') +
+  coord_flip() +
+  facet_wrap(~entity) + guides(colour = FALSE) +
+  theme_pubr() + 
+  theme(text = element_text(size=10,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank(), 
+        plot.title = element_text(size = 16, family='Lato', face='bold'))
+)
+p_crops +
+   plot_annotation(
+  title = "Regional crops: then vs. now",
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'))
+  )
+
+```
+
+```{r arable_time}
+
+arable_summary <- arable_land %>%
+  filter(entity %in% regions) %>%
+  group_by(entity, year) %>%
+  summarise(total_land = sum(arable_land, na.rm = TRUE))
+
+ggplot(data = arable_summary %>%
+         arrange(entity), 
+       aes(x = year, y = total_land, colour = entity, group = entity)) +
+  geom_line() +
+  scale_colour_manual(values = col_palette) +
+  labs(x = '', y = 'Arable land to produce 1 crop', group = '', colour = '') +
+  scale_x_continuous(breaks = seq(1960, 2020, 5)) +
+  theme_pubr() +
+  theme(text = element_text(size=14,  family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10, family='Lato'),
+        axis.ticks.y = element_blank()) +
+  plot_annotation(
+  title = "Arable land by region",
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'))
+  )
+
+```
+```{r fertilizer_byregion}
+
+ggarrange(
+  ggplot(data = arable_land %>% filter(entity %in% regions, year == 2014),
+         aes(x = '', y = arable_land, fill = entity)) +
+    geom_bar(stat = 'identity', width = 1, colour = 'white', alpha = 0.8) +
+    geom_text(aes(label = paste(round(arable_land / sum(arable_land) * 100, 1), "%")),
+          position = position_stack(vjust = 0.5)) +
+    coord_polar(theta = 'y') + 
+    scale_fill_manual(values = col_palette) +
+    labs(fill = '', title = 'Arable land, 2014') +
+    theme_void() +
+    theme(text = element_text(size=14,  family='Lato'),
+          plot.title = element_text(size = 16, family='Lato', face='bold', hjust = 0.5)),
+  ggplot(data = fertilizer %>% filter(entity %in% regions, year == 2014),
+         aes(x = '', y = fertilizer_use, fill = entity)) +
+    geom_bar(stat = 'identity', width = 1, colour = 'white', alpha = 0.8) +
+    geom_text(aes(label = paste(round(fertilizer_use / sum(fertilizer_use) * 100, 1), "%")),
+          position = position_stack(vjust = 0.5)) +
+    coord_polar(theta = 'y') + 
+    scale_fill_manual(values = col_palette) +
+    labs(fill = '', title = 'Fertilizer use, 2014') +
+    theme_void() +
+    theme(text = element_text(size=14,  family='Lato'),
+          plot.title = element_text(size = 16, family='Lato', face='bold', hjust = 0.5)),
+  nrow = 1, ncol = 2, common.legend = TRUE, legend = 'bottom'
+) 
+
+```
+
+</center>

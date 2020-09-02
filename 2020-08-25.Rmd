@@ -177,7 +177,7 @@ p_dessert <- ggplot(summary_ingredients %>%
   coord_flip() +
   theme_pubr() + 
   theme(text = element_text(size=10,  family='Lato'),
-        axis.text.x = element_text(size = 8, family='Lato'),
+        axis.text.x = element_text(size = 10, family='Lato'),
         axis.ticks.x = element_blank(),
         axis.text.y = element_text(size = 10, family='Lato'),
         axis.ticks.y = element_blank())
