@@ -191,7 +191,7 @@ ggarrange(
          aes(x = '', y = arable_land, fill = entity)) +
     geom_bar(stat = 'identity', width = 1, colour = 'white', alpha = 0.8) +
     geom_text(aes(label = paste(round(arable_land / sum(arable_land) * 100, 1), "%")),
-          position = position_stack(vjust = 0.5)) +
+          position = position_stack(vjust = 0.5), family = 'Lato') +
     coord_polar(theta = 'y') + 
     scale_fill_manual(values = col_palette) +
     labs(fill = '', title = 'Arable land, 2014') +
@@ -202,7 +202,7 @@ ggarrange(
          aes(x = '', y = fertilizer_use, fill = entity)) +
     geom_bar(stat = 'identity', width = 1, colour = 'white', alpha = 0.8) +
     geom_text(aes(label = paste(round(fertilizer_use / sum(fertilizer_use) * 100, 1), "%")),
-          position = position_stack(vjust = 0.5)) +
+          position = position_stack(vjust = 0.5), family = 'Lato') +
     coord_polar(theta = 'y') + 
     scale_fill_manual(values = col_palette) +
     labs(fill = '', title = 'Fertilizer use, 2014') +
