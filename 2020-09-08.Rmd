@@ -1,0 +1,207 @@
+---
+title: 'Friends'
+subtitle: 'Tidy Tuesday 2020-09-08'
+author: 'Shelby Bachman'
+output: 
+  html_document:
+    theme: simplex
+    fit_retina: 1
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+library(tidyverse)
+library(sysfonts)
+library(showtext)
+library(showtextdb)
+library(ggpubr)
+library(patchwork)
+library(cowplot)
+
+# google fonts
+font_add_google(name = "Montserrat", 
+                regular.wt = 400)
+font_add_google("Architects Daughter",
+                regular.wt = 400)
+showtext_auto()
+
+# color schemes
+red_friends <- '#D81830'
+yellow_friends <- '#F0C018'
+blue_friends <- '#357DED'
+brown_friends <- '#8C7369'
+purple_friends <- '#A393BF'
+green_friends <- '#73D47E'
+gray_friends <- '#E9F1F7'
+
+col_scheme_speakers <- c('Chandler' = red_friends,
+                         'Joey' = yellow_friends,
+                         'Monica' = green_friends,
+                         'Phoebe' = blue_friends,
+                         'Rachel' = gray_friends,
+                         'Ross' = brown_friends)
+
+```
+
+Today's dataset includes many different metrics for episodes of the American sitcom *Friends*. <br> It comes from the `friends` R package courtesy of [Emil Hvitfeldt](https://twitter.com/Emil_Hvitfeldt).
+
+<hr>
+
+```{r load_data, include = FALSE}
+
+friends <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-08/friends.csv')
+friends_emotions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-08/friends_emotions.csv')
+friends_info <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-08/friends_info.csv')
+
+```
+
+```{r transform_data, include = FALSE}
+
+main_chars <- c('Monica Geller', 'Joey Tribbiani', 'Chandler Bing',
+                'Phoebe Buffay', 'Ross Geller', 'Rachel Green')
+
+friends <- friends %>%
+  filter(speaker %in% main_chars) %>%
+  mutate(speaker = case_when(
+    speaker == 'Monica Geller' ~ 'Monica',
+    speaker == 'Joey Tribbiani' ~ 'Joey',
+    speaker == 'Chandler Bing' ~ 'Chandler',
+    speaker == 'Phoebe Buffay' ~ 'Phoebe',
+    speaker == 'Ross Geller' ~ 'Ross',
+    speaker == 'Rachel Green' ~ 'Rachel')
+  ) %>%
+  left_join(friends_emotions, by = c('season', 'episode', 'scene', 'utterance'))
+
+
+summary_season <- friends %>%
+  group_by(season, speaker) %>%
+  summarize(count_utt = n()) %>%
+  left_join(friends_info %>%
+              group_by(season) %>%
+              summarize(mean_rating = mean(imdb_rating, na.rm = TRUE),
+                        mean_views = mean(us_views_millions, na.rm = TRUE)),
+            by = 'season')
+
+summary_emotions <- friends %>%
+  group_by(speaker, emotion) %>%
+  summarize(count_emotion = n()) %>%
+  filter(!is.na(emotion))
+
+```
+
+```{r fig_theme, include = FALSE}
+
+theme_friends <- theme_void() +
+  theme(
+    legend.position = "right",
+    plot.background = element_rect(fill = "black", color = "black"),
+    panel.background = element_rect(fill = "black", color = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 10, color = 'white', family = 'Montserrat'),
+    axis.text.y = element_text(size = 10, color = 'white', family = 'Montserrat'),
+    axis.ticks = element_blank(),
+    axis.title.x = element_text(size = 10, color = 'white', family = 'Montserrat'),
+    axis.title.y = element_text(size = 10, color = 'white', family = 'Montserrat'),
+    axis.line.x = element_line(color = 'white'),
+    axis.line.y = element_line(color = 'white'),
+    plot.title = element_text(color = 'white', family = 'Architects Daughter', size = 20,
+                              face = 'bold', hjust = 0.5),
+    plot.subtitle = element_text(color = 'white', family = 'Montserrat', size = 10, 
+                                     hjust = 0.5),
+    legend.text = element_text(size = 10, color = 'white', family = 'Architects Daughter'),
+    plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm")
+    )
+
+```
+
+<center>
+
+```{r fig_speakers, fig.width = 6, fig.height = 4, fig.showtext = TRUE}
+
+ggplot(data = summary_season,
+       aes(x = season, y = count_utt, colour = speaker, group = speaker)) +
+  geom_smooth(se = FALSE) +
+  scale_x_continuous(breaks = seq(1, 10, 1)) +
+  scale_colour_manual(values = col_scheme_speakers) +
+  labs(x = 'Season', y = '', title = 'Friends', 
+       subtitle = 'Phrases uttered by each character') +
+  theme_friends
+
+```
+
+
+```{r fig_emotions, fig.width = 8, fig.height = 5, fig.showtext=TRUE}
+
+summary_emotions$speaker <- as.factor(summary_emotions$speaker)
+summary_emotions$emotion <- as.factor(summary_emotions$emotion)
+
+empty_bar <- 3
+to_add <- data.frame( 
+  matrix(NA, empty_bar*nlevels(summary_emotions$speaker), ncol(summary_emotions)) 
+  )
+colnames(to_add) <- colnames(summary_emotions)
+to_add$speaker <- rep(levels(summary_emotions$speaker), 
+                              each = empty_bar)
+summary_emotions <- rbind(summary_emotions, to_add)
+summary_emotions <- summary_emotions %>% arrange(speaker)
+summary_emotions$id <- seq(1, nrow(summary_emotions))
+
+label_data <- summary_emotions
+number_of_bar <- nrow(label_data)
+angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar
+label_data$hjust <- ifelse(angle < -90, 1, 0)
+label_data$angle <- ifelse(angle < -90, angle+180, angle)
+
+base_data <- summary_emotions %>% 
+  group_by(speaker) %>% 
+  summarize(start = min(id), end = max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title = mean(c(start, end)))
+
+ggplot(summary_emotions, 
+       aes(x = as.factor(id), y = count_emotion, fill = speaker)) +
+  geom_bar(stat = "identity", alpha = 0.8) +
+  scale_fill_manual(values = col_scheme_speakers) +
+  ylim(-500,540) +
+  theme_minimal() +
+  theme(legend.position = "none",
+    plot.background = element_rect(fill = "black", color = "black"),
+    panel.background = element_rect(fill = "black", color = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_text(color = 'white', family = 'Architects Daughter',
+                              size = 20, face = 'bold', hjust = 0.5,
+                              margin(5, 0, 0, 0)),
+    plot.subtitle = element_text(color = 'white', family = 'Montserrat',
+                                 size = 10, hjust = 0.5,
+                                 margin(0, 0, 0, 0)),
+#    plot.margin = unit(rep(-1,4), "cm"),
+    plot.margin = unit(c(0.5, 0, 0, 0), "cm"),
+    panel.border = element_rect(colour = "black", fill=NA, size=10)) +
+  coord_polar() + 
+  geom_text(data = label_data, 
+            aes(x = id, y = count_emotion+10, 
+                label = emotion, hjust = hjust), 
+            color = 'white', family = 'Montserrat',
+            size = 2.5, angle = label_data$angle, inherit.aes = FALSE) +
+  geom_text(data = base_data, 
+            aes(x = title, y = -170, label = speaker), 
+            colour = 'white', family = 'Architects Daughter', alpha = 0.8, 
+            size = 4, inherit.aes = FALSE) +
+  labs(title = 'Friends', subtitle = 'Emotion of utterances')
+
+showtext_auto(FALSE)
+
+```
+
+</center>
