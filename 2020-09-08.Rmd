@@ -1,5 +1,5 @@
 ---
-title: 'Friends'
+title: 'Friends the sitcom: speakers & emotions'
 subtitle: 'Tidy Tuesday 2020-09-08'
 author: 'Shelby Bachman'
 output: 
