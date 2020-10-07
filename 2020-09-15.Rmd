@@ -1,0 +1,264 @@
+---
+title: 'US government spending on kids'
+subtitle: 'Tidy Tuesday 2020-09-15'
+author: 'Shelby Bachman'
+output: 
+  html_document:
+    theme: flatly
+    highlight: default
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+
+```
+
+```{css header_updates}
+
+# change link color
+a:link { 
+  color: #EB9486;
+}
+a:visited {
+   color: #EB9486;
+}
+a:hover {
+   color: #EB9486;
+}
+a:active {
+   color: #EB9486;
+}
+
+```
+
+Today's dataset comes from the [Urban Institute](https://datacatalog.urban.org/dataset/state-state-spending-kids-dataset) and reflects US spending on various services impacting children, including social services, education, and health in the US between 1997 and 2016.
+
+<hr>
+
+```{r load_data}
+
+kids <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-15/kids.csv')
+# note: NAs for medicaid and health for 1998
+
+```
+
+```{r clean_data}
+
+kids <- kids %>% 
+  filter(year!=1997) %>%
+  mutate(variable_renamed = case_when(
+    variable == 'PK12ed' ~ 'Elementary & secondary education',
+    variable == 'highered' ~ 'Higher education',
+    variable == 'edsubs' ~ 'Education subsidies & scholarships',
+    variable == 'edservs' ~ 'Education special services',
+    variable == 'pell' ~ 'Pell grants',
+    variable == 'HeadStartPriv' ~ 'Head Start awards',
+    variable == 'TANFbasic' ~ 'Temporary Assistance for Needy Families (TANF)',
+    variable == 'othercashserv' ~ 'Other cash assistance & social services',
+    variable == 'SNAP' ~ 'Supplemental Nutrition Assistance Program (SNAP)',
+    variable == 'socsec' ~ 'Social Security payments to children',
+    variable == 'fedSSI' ~ 'Federal SSI payments to children',
+    variable == 'fedEITC' ~ 'Earned income tax credit',
+    variable == 'CTC' ~ 'Child Tax Credit',
+    variable == 'addCC' ~ 'Additional Child Credit',
+    variable == 'stateEITC' ~ 'State earned income tax credit',
+    variable == 'unemp' ~ 'Unemployment benefits',
+    variable == 'wcomp' ~ 'Workers compensation benefits',
+    variable == 'Medicaid_CHIP' ~ 'Medicaid (for <21) & Childrens Health Insurance Program',
+    variable == 'pubhealth' ~ 'Public health',
+    variable == 'other_health' ~ 'Health vendor & public hospital payments',
+    variable == 'HCD' ~ 'Housing & community development',
+    variable == 'lib' ~ 'Libraries',
+    variable == 'parkrec' ~ 'Parks & recreation',
+  )) 
+
+variables_education <- c('Elementary & secondary education',
+                         'Higher education', 
+                         'Education subsidies & scholarships',
+                         'Education special services',
+                         'Pell grants',
+                         'Head Start awards')
+variables_socialserv <- c('Temporary Assistance for Needy Families (TANF)',
+                          'Other cash assistance & social services',
+                          'Supplemental Nutrition Assistance Program (SNAP)',
+                          'Social Security payments to children',
+                          'Federal SSI payments to children',
+                          'Earned income tax credit',
+                          'Child Tax Credit',
+                          'Additional Child Credit',
+                          'State earned income tax credit',
+                          'Unemployment benefits',
+                          'Workers compensation benefits')
+variables_health <- c('Medicaid (for <21) & Childrens Health Insurance Program',
+                      'Public health',
+                      'Health vendor & public hospital payments')
+variables_infrastructure <- c('Housing & community development',
+                              'Libraries',
+                              'Parks & recreation')
+kids <- kids %>%
+  mutate(category = case_when(
+    variable_renamed %in% variables_education ~ 'primary, secondary &\nhigher education',
+    variable_renamed %in% variables_socialserv ~ 'social insurance &\nassistance programs',
+    variable_renamed %in% variables_health ~ 'healthcare &\npublic health',
+    variable_renamed %in% variables_infrastructure ~ 'public facilities\n(housing, libraries,\nparks, etc.)'
+  ))
+
+kids$category <- factor(kids$category,
+                        levels = c('primary, secondary &\nhigher education',
+                                   'healthcare &\npublic health',
+                                   'social insurance &\nassistance programs',
+                                   'public facilities\n(housing, libraries,\nparks, etc.)'))
+
+kids_edu <- kids %>%
+  filter(category == 'primary, secondary &\nhigher education')
+
+kids_health <- kids %>%
+  filter(category == 'healthcare &\npublic health')
+
+kids_social <- kids %>%
+  filter(category == 'social insurance &\nassistance programs')
+
+kids_infr <- kids %>%
+  filter(category == 'public facilities\n(housing, libraries,\nparks, etc.)')
+
+```
+
+```{r color_palettes}
+
+col_palette <- c('primary, secondary &\nhigher education' = '#CAE7B9',
+                 'healthcare &\npublic health' = '#F3DE8A',
+                 'social insurance &\nassistance programs' = '#EB9486',
+                 'public facilities\n(housing, libraries,\nparks, etc.)' = '#7E7F9A')
+
+```
+
+<center>
+
+```{r spend_time, fig.width = 8, fig.height = 5}
+
+kids %>%
+  filter(year != 1997) %>%
+  group_by(year, category) %>%
+  summarize(tot_spending = sum(raw)/1000000) %>%
+  ggplot(aes(x = year, y = log(tot_spending), colour = category)) +
+  geom_line(lwd = 1.5) +
+  scale_color_manual(values = col_palette) +
+  scale_x_continuous(breaks = seq(from = 1998, to = 2016, by = 2)) +
+  labs(x = 'Year', y = 'Spending, log transformed (millions)', colour = '') +
+  theme_pubr() +
+  theme(text = element_text(size=12,  family='Lato'),
+      axis.text.x = element_text(size = 10, family='Lato'),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_text(size = 10, family='Lato'),
+      axis.ticks.y = element_blank()) +
+  plot_annotation(
+  title = 'Spending across time',
+  caption = 'Note: Spending summed across all 50 states & D.C.',
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'), 
+    plot.caption = element_text(family = 'Lato'))
+  )
+
+```
+
+
+```{r spend_time_bycat, fig.width = 12, fig.height = 6, echo = FALSE}
+
+p_edu <- kids_edu %>%
+  filter(year != 1997) %>%
+  group_by(variable_renamed) %>%
+  summarize(tot_spending = sum(raw)/1000000) %>%
+  ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
+  geom_segment(aes(xend = variable_renamed, yend = 0)) +
+  geom_point(colour = '#CAE7B9', size = 4,) +
+  labs(x = '', y = 'Spending, log transformed (millions)', colour = '',
+       title = 'Education') +
+  coord_flip() +
+  theme_pubr() +
+  theme(text = element_text(size=12,  family='Lato'),
+      axis.text.x = element_text(size = 10, family='Lato'),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_text(size = 10, family='Lato'),
+      axis.ticks.y = element_blank(),
+      plot.title = element_text(face = 'bold', hjust = 0))
+
+p_health <- kids_health %>%
+  filter(year != 1997) %>%
+  group_by(variable_renamed) %>%
+  summarize(tot_spending = sum(raw)/1000000) %>%
+  ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
+  geom_segment(aes(xend = variable_renamed, yend = 0)) +
+  geom_point(colour = '#F3DE8A', size = 4,) +
+  labs(x = '', y = 'Spending, log transformed (millions)', 
+       title = 'Healthcare', colour = '') +
+  coord_flip() +
+  theme_pubr() +
+  theme(text = element_text(size=12,  family='Lato'),
+      axis.text.x = element_text(size = 10, family='Lato'),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_text(size = 10, family='Lato'),
+      axis.ticks.y = element_blank(),
+      plot.title = element_text(face = 'bold', hjust = 0))
+
+p_social <- kids_social %>%
+  filter(year != 1997) %>%
+  group_by(variable_renamed) %>%
+  summarize(tot_spending = sum(raw)/1000000) %>%
+  ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
+  geom_segment(aes(xend = variable_renamed, yend = 0)) +
+  geom_point(colour = '#EB9486', size = 4,) +
+  labs(x = '', y = 'Spending, log transformed (millions)', colour = '',
+       title = 'Social programs') +
+  coord_flip() +
+  theme_pubr() +
+  theme(text = element_text(size=12,  family='Lato'),
+      axis.text.x = element_text(size = 10, family='Lato'),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_text(size = 10, family='Lato'),
+      axis.ticks.y = element_blank(),
+      plot.title = element_text(face = 'bold', hjust = 0))
+
+p_infr <- kids_infr %>%
+  filter(year != 1997) %>%
+  group_by(variable_renamed) %>%
+  summarize(tot_spending = sum(raw)/1000000) %>%
+  ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
+  geom_segment(aes(xend = variable_renamed, yend = 0)) +
+  geom_point(colour = '#7E7F9A', size = 4,) +
+  labs(x = '', y = 'Spending, log transformed (millions)', colour = '',
+       title = 'Infrastructure') +
+  coord_flip() +
+  theme_pubr() +
+  theme(text = element_text(size=12,  family='Lato'),
+      axis.text.x = element_text(size = 10, family='Lato'),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_text(size = 10, family='Lato'),
+      axis.ticks.y = element_blank(),
+      plot.title = element_text(face = 'bold', hjust = 0))
+
+ggarrange(p_edu, p_health, p_infr, p_social,
+          nrow = 2, ncol = 2, widths = c(4, 6)) +
+  plot_annotation(
+  title = 'Spending across time',
+  caption = 'Note: Spending summed across all 50 states & D.C.',
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'), 
+    plot.caption = element_text(family = 'Lato'))
+  )
+
+
+```
+
+
+<center>
+
+</center>
