@@ -180,7 +180,7 @@ p_edu <- kids_edu %>%
   ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
   geom_segment(aes(xend = variable_renamed, yend = 0)) +
   geom_point(colour = '#CAE7B9', size = 4,) +
-  labs(x = '', y = 'Spending, log transformed (millions)', colour = '',
+  labs(x = '', y = 'Spending, log (millions)', colour = '',
        title = 'Education') +
   coord_flip() +
   theme_pubr() +
@@ -198,7 +198,7 @@ p_health <- kids_health %>%
   ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
   geom_segment(aes(xend = variable_renamed, yend = 0)) +
   geom_point(colour = '#F3DE8A', size = 4,) +
-  labs(x = '', y = 'Spending, log transformed (millions)', 
+  labs(x = '', y = 'Spending, log (millions)', 
        title = 'Healthcare', colour = '') +
   coord_flip() +
   theme_pubr() +
@@ -216,7 +216,7 @@ p_social <- kids_social %>%
   ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
   geom_segment(aes(xend = variable_renamed, yend = 0)) +
   geom_point(colour = '#EB9486', size = 4,) +
-  labs(x = '', y = 'Spending, log transformed (millions)', colour = '',
+  labs(x = '', y = 'Spending, log (millions)', colour = '',
        title = 'Social programs') +
   coord_flip() +
   theme_pubr() +
@@ -234,7 +234,7 @@ p_infr <- kids_infr %>%
   ggplot(aes(x = variable_renamed, y = log(tot_spending))) +
   geom_segment(aes(xend = variable_renamed, yend = 0)) +
   geom_point(colour = '#7E7F9A', size = 4,) +
-  labs(x = '', y = 'Spending, log transformed (millions)', colour = '',
+  labs(x = '', y = 'Spending, log (millions)', colour = '',
        title = 'Infrastructure') +
   coord_flip() +
   theme_pubr() +

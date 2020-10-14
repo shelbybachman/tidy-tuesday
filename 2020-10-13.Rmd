@@ -1,0 +1,112 @@
+---
+title: "Summary statistics vs. distributions"
+author: "Shelby Bachman"
+subtitle: Tidy Tuesday 2020-10-13
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+  pdf_document: default
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+
+```
+
+Today's data, `datasauRus`, includes various datasets with very similar summary statistics but different distributions, offering clear examples of why visualization is important beyond summary statistics.
+
+<hr>
+
+```{r load_data}
+
+datasaurus <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-10-13/datasaurus.csv')
+
+```
+
+```{r set_parameters}
+
+col_scale <- c('away' = '#D5573B',
+               'bullseye' = '#885053',
+               'circle' = '#777DA7',
+               'dino' = '#94C9A9',
+               'dots' = '#C6ECAE',
+               'high_lines' = '#EAE151',
+               'slant_down' = '#B2FF9E',
+               'slant_up' = '#AFFC41',
+               'star' = '#1DD3B0',
+               'v_lines' = '#086375',
+               'wide_lines' = '#3C1642',
+               'x_shape' = '#393A10')
+
+```
+
+
+<center>
+
+```{r plot_summarystats}
+
+datasaurus %>% 
+  filter(!dataset == 'h_lines') %>%
+  pivot_longer(cols = c('x', 'y'), names_to = 'var', values_to = 'value') %>%
+  group_by(dataset, var) %>%
+  summarize(mean_val = mean(value, na.rm = TRUE),
+            sd_val = sd(value, na.rm = TRUE),
+            n_val = sum(!is.na(value))) %>%
+  mutate(se_val = sd_val / sqrt(n_val)) %>%
+  ggplot(aes(x = dataset, y = mean_val, colour = dataset)) +
+  geom_pointrange(aes(ymin = mean_val - se_val,
+                      ymax = mean_val + se_val)) +
+  labs(x = 'Dataset', y = 'Mean value*') +
+  scale_colour_manual(values = col_scale) +
+  guides(colour = FALSE) +
+  theme_classic() +
+  theme(text = element_text(size = 14, family = 'Lato'),
+        axis.text.x = element_text(angle = 45, vjust = 0.6)) +
+  plot_annotation(
+  title = 'Summary statistics for each dataset',
+  caption = '*Error bars indicate standard errors of the mean',
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0, family = 'Lato', face = 'bold'), 
+    plot.caption = element_text(family = 'Lato'))
+  )
+
+```
+
+```{r visualize_distributionsa}
+
+datasaurus %>% 
+  filter(!dataset == 'h_lines') %>%
+  ggplot(aes(x = x, y = y, colour = dataset)) +
+  geom_point() +
+  labs(x = 'x', y = 'y', colour = 'dataset') +
+  scale_colour_manual(values = col_scale) +
+  facet_wrap(~dataset, nrow = 2) +
+  guides(colour = FALSE) +
+  theme_classic() +
+  theme(text = element_text(size = 14, family = 'Lato'),
+        axis.text.x = element_text(angle = 45, vjust = 0.6)) +
+  plot_annotation(
+  title = 'Distribution of values in each dataset',
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0, family = 'Lato', face = 'bold'), 
+    plot.caption = element_text(family = 'Lato'))
+  )
+
+
+```
+
+
+
+
+
+<center>
+
+</center>

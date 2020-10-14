@@ -1,0 +1,104 @@
+---
+title: 'Taylor Swift Lyrics'
+subtitle: 'Tidy Tuesday 2020-09-29'
+author: 'Shelby Bachman'
+output: 
+  html_document:
+    theme: flatly
+    highlight: default
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+library(tidyverse)
+library(tidytext)
+library(ggpubr)
+library(rvest)
+
+```
+
+<hr>
+
+```{r load_data}
+
+tay_lyrics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/taylor_swift_lyrics.csv')
+charts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/charts.csv')
+
+```
+
+<center>
+
+```{r split_lyrics}
+
+# split lyrics into words, remove english stopwords
+data("stop_words")
+tay_words <- tay_lyrics %>%
+  unnest_tokens(word, Lyrics) %>%
+  anti_join(stop_words, by = c('word'))
+
+bey_words <- bey_lyrics %>%
+  unnest_tokens(word, line) %>%
+  anti_join(stop_words, by = c('word')) 
+
+```
+
+```{r count_words}
+
+# don't include these words
+words_excl <- c('uh', 'ha', 'ey', 'ooh', 
+                'na', 'ah', 'ooh', 'hoo', 
+                'huh', 'eh', 'eeh', 'ahh',
+                'mmm', 'whoa')
+
+# for each artist & album, count words
+tay_words_album <- tay_words %>%
+  count(Album, word, sort = TRUE) %>%
+  bind_tf_idf(word, Album, n) %>%
+  arrange(desc(tf_idf)) %>%
+  select(-idf, -tf) %>%
+  filter(!word %in% words_excl)
+
+```
+
+```{r clean_charts}
+
+charts %>%
+  filter(artist == 'Taylor Swift') %>%
+  select(Album = title, released) %>%
+  mutate()
+
+```
+
+```{r figure_lyrics_album}
+
+library(ggwordcloud)
+library(sysfonts)
+library(showtext)
+library(showtextdb)
+font_add_google(name = "IM Fell DW Pica")
+showtext_auto()
+
+ggplot(data = tay_words_album %>% filter(Album == 'folklore') %>%
+         top_n(50), 
+       aes(label = word, size = tf_idf)) +
+  geom_text_wordcloud_area() +
+  scale_size_area(max_size = 20) +
+  theme_minimal() +
+  labs(title = 'folklore') +
+  theme(text = element_text(family = "IM Fell DW Pica", face = 'italic'),
+        plot.title = element_text(family = 'IM Fell DW Pica'))
+
+
+showtext_auto(FALSE)
+
+```
+
+<center>
+
+</center>
