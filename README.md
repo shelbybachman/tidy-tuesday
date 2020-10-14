@@ -1,6 +1,7 @@
 # shelby's tidy tuesday projects
 
 <br>
+[2020-10-13](https://shelbybachman.github.io/tidy-tuesday/2020-10-13.html): summary statistics vs. distributions
 
 [2020-09-15](https://shelbybachman.github.io/tidy-tuesday/2020-09-15.html): US government spending on kids
 
