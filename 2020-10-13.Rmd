@@ -17,6 +17,7 @@ knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE)
 library(tidyverse)
 library(ggpubr)
+library(ggrepel)
 library(patchwork)
 
 ```
@@ -62,6 +63,7 @@ datasaurus %>%
             n_val = sum(!is.na(value))) %>%
   mutate(se_val = sd_val / sqrt(n_val)) %>%
   ggplot(aes(x = dataset, y = mean_val, colour = dataset)) +
+  geom_label_repel(aes(label = var)) +
   geom_pointrange(aes(ymin = mean_val - se_val,
                       ymax = mean_val + se_val)) +
   labs(x = 'Dataset', y = 'Mean value*') +
