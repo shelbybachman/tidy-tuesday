@@ -4,6 +4,8 @@
 
 [2020-10-13](https://shelbybachman.github.io/tidy-tuesday/2020-10-13.html): summary statistics vs. distributions
 
+[2020-09-29](https://shelbybachman.github.io/tidy-tuesday/2020-09-29.html): Beyoncé and Taylor Swift lyrics
+
 [2020-09-15](https://shelbybachman.github.io/tidy-tuesday/2020-09-15.html): US government spending on kids
 
 [2020-09-08](https://shelbybachman.github.io/tidy-tuesday/2020-09-08.html): speakers & emotions on the sitcom friends
