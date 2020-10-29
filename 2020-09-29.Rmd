@@ -1,5 +1,5 @@
 ---
-title: 'Taylor Swift Lyrics'
+title: 'Beyoncé and Taylor Swift lyrics'
 subtitle: 'Tidy Tuesday 2020-09-29'
 author: 'Shelby Bachman'
 output: 
@@ -20,26 +20,31 @@ library(tidyverse)
 library(tidytext)
 library(ggpubr)
 library(rvest)
+library(patchwork)
 
 ```
 
+Today's data includes lyrics from Beyoncé and Taylor Swift, courtesy of [Rosie Baillie](https://twitter.com/Rosie_Baillie_) and [Dr. Sara Stoudt](https://twitter.com/sastoudt). Below, I examine the most frequent words in each artist's discography and perform sentiment analysis on each artist's lyrics:
+
 <hr>
+
+<center>
 
 ```{r load_data}
 
 tay_lyrics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/taylor_swift_lyrics.csv')
+bey_lyrics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/beyonce_lyrics.csv')
 charts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/charts.csv')
 
-```
 
-<center>
+```
 
 ```{r split_lyrics}
 
 # split lyrics into words, remove english stopwords
 data("stop_words")
 tay_words <- tay_lyrics %>%
-  unnest_tokens(word, Lyrics) %>%
+  unnest_tokens(word, Lyrics) %>% 
   anti_join(stop_words, by = c('word'))
 
 bey_words <- bey_lyrics %>%
@@ -50,55 +55,249 @@ bey_words <- bey_lyrics %>%
 
 ```{r count_words}
 
-# don't include these words
-words_excl <- c('uh', 'ha', 'ey', 'ooh', 
-                'na', 'ah', 'ooh', 'hoo', 
-                'huh', 'eh', 'eeh', 'ahh',
-                'mmm', 'whoa')
-
-# for each artist & album, count words
-tay_words_album <- tay_words %>%
-  count(Album, word, sort = TRUE) %>%
-  bind_tf_idf(word, Album, n) %>%
-  arrange(desc(tf_idf)) %>%
-  select(-idf, -tf) %>%
-  filter(!word %in% words_excl)
+# for each artist, show most frequent words
+ggarrange(
+  
+  tay_words %>%
+    count(word, sort = TRUE) %>%
+    filter(n > 50) %>%
+    mutate(word = reorder(word, n)) %>%
+    ggplot(aes(x = word, y = n)) +
+    geom_segment(aes(xend = word, yend = 0), colour = 'lightgray') +
+    geom_point(colour = '#689689', size = 4) +
+#    geom_col(fill = '#689689') +
+    labs(x = '', y = '', title = 'Taylor Swift') +
+#    scale_y_discrete(expand = c(0, 0.7)) +
+    coord_flip() +
+    theme_classic() +
+    theme(plot.title = element_text(
+      size = 12, hjust = 0, family = 'Lato'),
+      axis.line = element_blank(), axis.ticks = element_blank(),
+      axis.text.y = element_text(family = 'Lato'),
+      axis.text.x = element_blank()),
+  
+  bey_words %>%
+    count(word, sort = TRUE) %>%
+    filter(n > 212) %>%
+    mutate(word = reorder(word, n)) %>%
+    ggplot(aes(word, n)) +
+    geom_segment(aes(xend = word, yend = 0), colour = 'lightgray') +
+    geom_point(colour = '#8A4F7D', size = 4) +
+#    geom_col(fill = '#8A4F7D') +
+    labs(x = '', y = '', title = 'Beyoncé') +
+#    scale_y_discrete(expand = c(0, 0)) +
+    coord_flip() +
+    theme_classic() +
+    theme(plot.title = element_text(
+      size = 12, hjust = 0, family = 'Lato'),
+      axis.line = element_blank(), axis.ticks = element_blank(),
+      axis.text.y = element_text(family = 'Lato'),
+      axis.text.x = element_blank()),
+  
+  nrow = 1, ncol = 2
+) +
+  plot_annotation(
+  title = "Most common words in each artist's lyrics",
+  theme = theme(plot.title = element_text(
+    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'))
+  )
 
 ```
 
-```{r clean_charts}
+```{r sentiment_analysis, fig.align='center'}
 
-charts %>%
-  filter(artist == 'Taylor Swift') %>%
-  select(Album = title, released) %>%
-  mutate()
+plot_tay <- ggarrange(
+  tay_words %>%
+  inner_join(get_sentiments('bing')) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  mutate(word = reorder(word, n)) %>%
+  filter(n > 10, 
+         sentiment == 'positive') %>%
+  ggplot(aes(x = word, y = n, alpha = sentiment)) +
+  geom_col(fill = '#689689') +
+  labs(x = '', y = '', title = 'Positive') +
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_alpha_manual(values = c('positive' = 1, 'negative' = 0.5)) +
+  coord_flip() +
+  theme_classic() +
+  guides(alpha = FALSE) +
+  theme(plot.title = element_text(
+  size = 10, hjust = 0, family = 'Lato'),
+  axis.line = element_blank(), axis.ticks = element_blank(),
+  axis.text.y = element_text(family = 'Lato')),
+  
+  tay_words %>%
+  inner_join(get_sentiments('bing')) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  mutate(word = reorder(word, n)) %>%
+  filter(n > 10, 
+         sentiment == 'negative') %>%
+  ggplot(aes(x = word, y = n, alpha = sentiment)) +
+  geom_col(fill = '#689689') +
+  labs(x = '', y = '', title = 'Negative') +
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_alpha_manual(values = c('positive' = 1, 'negative' = 0.5)) +
+  coord_flip() +
+  theme_classic() +
+  guides(alpha = FALSE) +
+  theme(plot.title = element_text(
+  size = 10, hjust = 0, family = 'Lato'),
+  axis.line = element_blank(), axis.ticks = element_blank(),
+  axis.text.y = element_text(family = 'Lato')),
+  nrow = 1
+) + 
+  plot_annotation(
+  title = "Taylor Swift",
+  theme = theme(plot.title = element_text(
+    size = 12, hjust = 0.5, family = 'Lato'))
+  )
+  
+plot_bey <- ggarrange(
+  bey_words %>%
+  inner_join(get_sentiments('bing')) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  mutate(word = reorder(word, n)) %>%
+  filter(n > 20, 
+         sentiment == 'positive') %>%
+  ggplot(aes(x = word, y = n, alpha = sentiment)) +
+  geom_col(fill = '#8A4F7D') +
+  labs(x = '', y = '', title = 'Positive') +
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_alpha_manual(values = c('positive' = 1, 'negative' = 0.5)) +
+  coord_flip() +
+  theme_classic() +
+  guides(alpha = FALSE) +
+  theme(plot.title = element_text(
+  size = 10, hjust = 0, family = 'Lato'),
+  axis.line = element_blank(), axis.ticks = element_blank(),
+  axis.text.y = element_text(family = 'Lato')),
+  
+  bey_words %>%
+  inner_join(get_sentiments('bing')) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  mutate(word = reorder(word, n)) %>%
+  filter(n > 24, 
+         sentiment == 'negative') %>%
+  ggplot(aes(x = word, y = n, alpha = sentiment)) +
+  geom_col(fill = '#8A4F7D') +
+  labs(x = '', y = '', title = 'Negative') +
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_alpha_manual(values = c('positive' = 1, 'negative' = 0.5)) +
+  coord_flip() +
+  theme_classic() +
+  guides(alpha = FALSE) +
+  theme(plot.title = element_text(
+  size = 10, hjust = 0, family = 'Lato'),
+  axis.line = element_blank(), axis.ticks = element_blank(),
+  axis.text.y = element_text(family = 'Lato')),
+  nrow = 1
+) + 
+  plot_annotation(
+  title = "Beyoncé",
+  theme = theme(plot.title = element_text(
+    size = 12, hjust = 0.5, family = 'Lato'))
+  )
+
+ggarrange(plot_tay, plot_bey) +
+  plot_annotation(title = "Most common words in each artist's lyrics, by sentiment",
+                  caption = 'Sentiment analysis performed using Bing lexicon',
+                  theme = theme(plot.title = element_text(
+                    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'),
+                    plot.caption = element_text(family = 'Lato'))
+  )
 
 ```
 
-```{r figure_lyrics_album}
+```{r sentiment_analysis_tay}
+
+title_numbers <- tay_lyrics %>%
+  group_by(Album) %>%
+  mutate(number = 1) %>%
+  mutate(Title_number = cumsum(number)) %>%
+  select(Artist, Album, Title, Title_number)
+  
+tay_sentiment <- tay_words %>%
+  left_join(title_numbers, by = c('Artist', 'Album', 'Title')) %>%
+  inner_join(get_sentiments('bing')) %>%
+  count(Album, Title, Title_number, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+tay_sentiment$Album <- factor(tay_sentiment$Album,
+                          levels = c('Taylor Swift', 'Fearless', 'Speak Now', 
+                                     'Red', '1989', 'reputation', 
+                                     'Lover', 'folklore'))
+
+palette_tay <- c('Taylor Swift' = '#79AEA3', 
+                 'Fearless' = '#F0A7A0', 
+                 'Speak Now' = '#8D6A9F', 
+                 'Red' = '#BB342F', 
+                 '1989' = '#82C0CC', 
+                 'reputation' = '#5C0029', 
+                 'Lover' = '#FFD447', 
+                 'folklore' = '#A0A083')
+
+ggplot(tay_sentiment,
+       aes(x = Title_number, y = sentiment, colour = Album, group = Album)) +
+  geom_line(show.legend = FALSE) +
+  labs(x = '', y= 'sentiment\n(+ = positive, - = negative)') +
+  facet_wrap(~Album, ncol = 4, scales = 'free_x', ) +
+  scale_colour_manual(values = palette_tay) +
+  theme_classic() +
+  theme(strip.background = element_rect(
+    color = 'white', fill = 'white', size = 1.5, linetype = 'solid'),
+    axis.line = element_blank(), axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    strip.text = element_text(family = 'Lato', size = 12),
+    axis.text.y = element_text(family = 'Lato'),
+    axis.title.y = element_text(family = 'Lato')
+  ) +
+  plot_annotation(title = "Sentiment across the course of each Taylor Swift album",
+                  caption = 'Sentiment analysis performed using Bing lexicon',
+                  theme = theme(plot.title = element_text(
+                    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'),
+                    plot.caption = element_text(family = 'Lato'))
+  )
+
+```
+
+```{r wordcloud_tay}
 
 library(ggwordcloud)
-library(sysfonts)
-library(showtext)
-library(showtextdb)
-font_add_google(name = "IM Fell DW Pica")
-showtext_auto()
 
-ggplot(data = tay_words_album %>% filter(Album == 'folklore') %>%
-         top_n(50), 
-       aes(label = word, size = tf_idf)) +
-  geom_text_wordcloud_area() +
-  scale_size_area(max_size = 20) +
+albums_tay <- unique(tay_words$Album)
+wordclouds_tay <- vector(mode = 'list', length = length(albums_tay))
+for (ii in 1:length(albums_tay)) {
+  wordclouds_tay[[ii]] <- 
+  ggplot(tay_words %>% filter(Album == albums_tay[ii]) %>%
+         count(word) %>% filter(n > 5),
+       aes(label = word, size = n)) +
+  geom_text_wordcloud_area(family = 'Lato',
+                           colour = palette_tay[ii]) +
+  scale_size_area(max_size = 9) +
+  labs(title = albums_tay[ii]) +
   theme_minimal() +
-  labs(title = 'folklore') +
-  theme(text = element_text(family = "IM Fell DW Pica", face = 'italic'),
-        plot.title = element_text(family = 'IM Fell DW Pica'))
+  theme(plot.title = element_text(
+    family = 'Lato', size = 12, hjust = 0.5))
+}
 
-
-showtext_auto(FALSE)
+ggarrange(
+  wordclouds_tay[[1]],
+  wordclouds_tay[[2]],
+  wordclouds_tay[[3]],
+  wordclouds_tay[[4]],
+  wordclouds_tay[[5]],
+  wordclouds_tay[[6]],
+  wordclouds_tay[[7]],
+  wordclouds_tay[[8]],
+  nrow = 2, ncol = 4
+) +
+  plot_annotation(title = "Most common words in each Taylor Swift album",
+                  caption = "Only includes words appearing more than 5 times",
+                  theme = theme(plot.title = element_text(
+                    size = 16, hjust = 0.5, family = 'Lato', face = 'bold'),
+                    plot.caption = element_text(family = 'Lato')))
 
 ```
-
-<center>
 
 </center>
