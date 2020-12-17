@@ -1,0 +1,66 @@
+---
+title: 'Women of 2020'
+author: 'Shelby Bachman'
+subtitle: 'Tidy Tuesday 2020-12-08'
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+  
+```{r setup, include = FALSE}
+
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(patchwork)
+library(DT)
+
+```
+
+Today's dataset is a list of 100 inspiring and influential women from around the world for 2020, as selected by the BBC and [Joshua Feldman](https://twitter.com/joshuafeidman?lang=en). Below, I use the `DT` package to visualize the data in an interactive table.
+
+<hr>
+
+```{r load_data}
+
+women <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-12-08/women.csv')
+
+```
+
+```{r create_img_links, echo = FALSE}
+
+women <- women %>%
+  rowwise() %>%
+  mutate(img_html = str_c('<img src= "', img, '" height = "52"></img>', sep = '')) %>%
+  select(img_html, name, category, country, role, description) 
+
+```
+
+
+```{r create_table}
+
+datatable(data = women, 
+#          filter = "top",
+          colnames = c('', 'name', 'category', 'country', 'role', 'description'),
+          options = list(pageLength = 5,
+                         autoWidth = TRUE,
+                         columnDefs = list(list(width = '50px', targets = 1))),
+          style = "default",
+          escape = FALSE) %>%
+  formatStyle(
+  'category',
+  color = styleEqual(c('All', 'Leadership', 'Creativity', 'Knowledge', 'Identity'), 
+                     c('darkgray', '#ED6A5A', '#94C9A9', '#777DA7', '#5D576B'))
+)
+
+```
+
+
+  
