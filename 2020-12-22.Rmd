@@ -1,0 +1,172 @@
+---
+title: "Big Mac Indices"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2020-12-22"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+  pdf_document: default
+---
+
+```{r setup, include = FALSE}
+
+rm(list = ls())
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+library(reactable)
+library(htmltools)
+library(tidyverse)
+library(ggpubr)
+library(ggrepel)
+library(patchwork)
+
+```
+
+Today's data comes from [The Economist](https://github.com/TheEconomist/big-mac-data) and includes Big Mac prices from around the world, as well as how those prices indicate that a given currency is over- or under-valued relative to others. Below, I use the `reactable` ([link](https://glin.github.io/reactable/index.html)) package to examine the data.
+
+<hr>
+
+```{r load_data}
+
+data <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-12-22/big-mac.csv')
+
+data <- data %>%
+  select(name, dollar_price, adj_price, usd_adjusted:cny_adjusted) %>%
+  group_by(name) %>%
+  summarize(dollar_price = mean(dollar_price, na.rm = TRUE),
+            adj_price = mean(adj_price, na.rm = TRUE),
+            usd_adjusted = mean(usd_adjusted, na.rm = TRUE),
+            eur_adjusted = mean(eur_adjusted, na.rm = TRUE)) %>%
+  mutate(dollar_price = round(dollar_price, 2),
+         adj_price = round(adj_price, 2),
+         usd_adjusted = round(usd_adjusted, 2),
+         eur_adjusted = round(eur_adjusted, 2)) %>%
+  filter(!is.na(adj_price))
+
+```
+
+```{css set_params}
+
+.bar-cell {
+  display: flex;
+  align-items: center;
+}
+
+.number {
+  font-size: 13.5px;
+  white-space: pre;
+}
+
+.bar-chart {
+  flex-grow: 1;
+  margin-left: 6px;
+  height: 22px;
+}
+
+.bar {
+  height: 100%;
+}
+
+```
+
+
+<center>
+
+```{r create_table}
+
+reactable(
+  data,
+  defaultSortOrder = 'desc',
+  defaultSorted = 'dollar_price',
+  showSortIcon = FALSE,
+  compact = TRUE,
+  pagination = FALSE,
+  defaultColDef = colDef(
+    headerStyle = list(
+      textAlign = "right",
+      fontSize = "14px",
+      lineHeight = "14px",
+      textTransform = "uppercase",
+      color = "#0c0c0c",
+      fontWeight = "500",
+      borderBottom = "2px solid #e9edf0",
+      paddingBottom = "3px",
+      verticalAlign = "bottom",
+      fontFamily = "Lato"
+    ),
+    style = list(
+      fontFamily = "Lato",
+      fontSize = "14px",
+      verticalAlign = "center",
+      align = "left"
+    )
+  ),
+  
+  columns = list(
+    name = colDef(
+      name = "Country / Region",
+      style = list(fontFamily = "Lato",
+                   fontWeight = "400"),
+      headerStyle = list(
+      textAlign = "left",
+      fontSize = "14px",
+      lineHeight = "14px",
+      textTransform = "uppercase",
+      color = "#0c0c0c",
+      fontWeight = "500",
+      borderBottom = "2px solid #e9edf0",
+      paddingBottom = "3px",
+      verticalAlign = "bottom",
+      fontFamily = "Lato"
+      )
+    ),
+    dollar_price = colDef(
+      html = TRUE,
+      name = "Price, US Dollars"
+    ),
+    adj_price = colDef(
+      html = TRUE,
+      header = JS("
+      function(colInfo) {
+        return 'Price, US Dollars<br>(GDP-adjusted)'
+      }"),
+      name = "Price, US Dollars(GDP-adjusted)"
+    ),
+    usd_adjusted = colDef(
+        cell = function(value) {
+        width <- paste0(value * 100 / max(data$usd_adjusted), "%")
+        value <- format(value, big.mark = ",")
+        value <- format(value, width = 10, justify = "right")
+        bar <- div(
+          class = "bar-chart",
+          style = list(marginRight = "6px"),
+          div(
+            class = "bar",
+            style = list(width = width, backgroundColor = "#F15A3F")
+          )
+        )
+        div(class = "bar-cell", span(class = "number", value), bar)
+      }
+    ),
+    eur_adjusted = colDef(
+      cell = function(value) {
+        width <- paste0(value * 100 / max(data$eur_adjusted), "%")
+        value <- format(value, big.mark = ",")
+        value <- format(value, width = 10, justify = "right")
+        bar <- div(
+          class = "bar-chart",
+          style = list(marginRight = "6px"),
+          div(
+            class = "bar",
+            style = list(width = width, backgroundColor = "#F15A3F")
+          )
+        )
+        div(class = "bar-cell", span(class = "number", value), bar)
+      }
+    )
+  )
+)
+
+```
