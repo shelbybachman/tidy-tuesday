@@ -1,0 +1,126 @@
+---
+title: "Kenya Census"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2021-01-19"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+  
+Today's data comes from the [`rKenyaCensus`](https://github.com/Shelmith-Kariuki/rKenyaCensus) package and includes results of the 2019 Kenya Population and Housing Census, courtesy of [Shelmith Kariuki](https://twitter.com/Shel_Kariuki). Below I recreate the Cleveland dot plot described [here](https://uc-r.github.io/cleveland-dot-plots), to explore the number of men and women in each county in Kenya.
+
+<hr>
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(dplyr)
+library(tidyr)
+library(maps)
+library(mapdata)
+library(ggplot2)
+
+```
+  
+```{r load_data}
+
+gender <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-19/gender.csv')
+crops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-19/crops.csv')
+households <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-19/households.csv')
+
+```
+
+```{r clean_data}
+
+gender <- gender %>%
+  filter(County != 'Total') %>%
+  arrange(Total) %>%
+  mutate(County = factor(County, levels = .$County))
+
+gender <- gender %>%
+  select(County, Male, Female) %>%
+  pivot_longer(cols = Male:Female, names_to = 'Gender', values_to = 'Count') %>%
+  mutate(County = factor(County, levels = gender$County))
+  
+# right labels
+right_label <- gender %>%
+  group_by(County) %>%
+  arrange(desc(Count)) %>%
+  top_n(1)
+
+# left labels
+left_label <- gender %>%
+  group_by(County) %>%
+  arrange(desc(Count)) %>%
+  slice(2)
+
+# create df which identifies gender gap over 10%
+gap <- gender %>%
+  pivot_wider(names_from = 'Gender', values_from = 'Count') %>%
+  group_by(County) %>%
+  mutate(Max = max(Male, Female),
+         Min = min(Male, Female),
+         Diff = Max / Min - 1) %>%
+  arrange(desc(Diff)) %>%
+  filter(Diff >= 0.1)
+
+# filter label dfs to only include counties with gap > 10%
+right_label <- right_label %>%
+  filter(County %in% gap$County)
+left_label <- left_label %>%
+  filter(County %in% gap$County)
+
+# filter main df to include counties with gap > 10%
+highlight <- filter(gender, County %in% gap$County)
+
+# create a new label dataframe showing % gap
+plot_label <- gap %>%
+  select(County, Count = Max, Diff) %>%
+  right_join(right_label, by = c('County', 'Count'))
+
+```
+
+```{r plot, fig.width = 6, fig.height = 8}
+
+ggplot(data = gender,
+       aes(x = Count, y = County)) +
+  geom_point(aes(colour = Gender), size = 1.5, alpha = 0.3) +
+  geom_line(aes(group = County), alpha = 0.3) +
+  geom_line(data = highlight, aes(group = County)) +
+  geom_point(data = highlight, aes(colour = Gender), size = 2) +
+#  geom_text(data = right_label, aes(colour = Gender,
+#                                    label = round(Count, 0)),
+#            size = 3, hjust = -0.25) +
+#  geom_text(data = left_label, aes(colour = Gender,
+#                                   label = round(Count, 0)),
+#            size = 3, hjust = 1.25) +
+  geom_text(data = plot_label, aes(colour = Gender,
+            label = paste0('+', scales::percent(round(Diff, 2)))),
+            size = 3, hjust = -0.25) +
+  guides(label = FALSE) +
+  scale_colour_manual(values = c('Female' = '#e09f3e', 'Male' = '#588b8b')) +
+  labs(title = 'Number of men and women by county in Kenya',
+       subtitle = 'Five counties have a 10% or greater difference in the \nnumber of male and female residents.') +
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_blank(),
+        legend.justification = c(0, 1),
+        legend.position = c(0.1, 1.05),
+        legend.background = element_blank(),
+        legend.direction = 'horizontal',
+        text = element_text(family = 'Lato'),
+        plot.title = element_text(size = 16, margin = margin(b = 10)),
+        plot.subtitle = element_text(size = 10, colour = 'darkslategray',
+                                     margin = margin(b = 25)),
+        plot.caption = element_text(size = 8, margin = margin(t = 10),
+                                    colour = 'grey70', hjust = 0))
+
+```
+
+  
