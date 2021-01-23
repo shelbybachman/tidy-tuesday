@@ -2,6 +2,8 @@
 
 <br>
 
+[2021-01-19](https://shelbybachman.github.io/tidy-tuesday/2021-01-19.html): Kenya census
+
 [2020-12-08](https://shelbybachman.github.io/tidy-tuesday/2020-12-08.html): BBC's women of 2020
 
 [2020-10-13](https://shelbybachman.github.io/tidy-tuesday/2020-10-13.html): summary statistics vs. distributions
