@@ -2,6 +2,8 @@
 
 <br>
 
+[2021-01-19](https://shelbybachman.github.io/tidy-tuesday/2021-01-26.html): Global plastic pollution & pickup
+
 [2021-01-19](https://shelbybachman.github.io/tidy-tuesday/2021-01-19.html): Kenya census
 
 [2020-12-08](https://shelbybachman.github.io/tidy-tuesday/2020-12-08.html): BBC's women of 2020
