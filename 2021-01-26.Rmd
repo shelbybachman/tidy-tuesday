@@ -83,15 +83,15 @@ p + geom_text(data = labeldata %>%
                 filter(label %in% top_5_sources$parent_company),
               aes(x, y, label = label),
               inherit.aes = FALSE,
-              nudge_x = -0.35,
-              family = 'Lato', size = 5) +
+              nudge_x = -0.28,
+              family = 'Lato', size = 4) +
   # add country labels
   geom_text(data = labeldata %>%
                 filter(label %in% unique(pol_by_country_comp$country)),
               aes(x, y, label = label),
               inherit.aes = FALSE,
-              nudge_x = 0.2,
-              family = 'Lato', size = 5)
+              nudge_x = 0.15,
+              family = 'Lato', size = 3)
 
 
 ```
