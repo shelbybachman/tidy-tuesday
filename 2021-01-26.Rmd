@@ -1,0 +1,99 @@
+---
+title: "Global plastic pollution & pickup"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2021-01-26"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+  
+Today's data comes from [Break Free from Plastic](https://www.breakfreefromplastic.org/) and includes metrics on various sources and types of plastic pollution around the world. Below, I use the `ggforce` package to examine which countries produce the most global pollution (left) and the countries in which pollution from those companies is picked up by volunteers (right).
+
+<hr>
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggforce)
+library(ggplot2)
+
+# color palette
+pal <- c("#d7263d","#f46036","#2e294e","#1b998b","#c5d86d")
+
+```
+  
+```{r load_data}
+
+plastics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-26/plastics.csv')
+
+plastics <- plastics %>%
+  filter(year == 2020)
+
+plastics$country <- str_replace_all(plastics$country, 'United Kingdom of Great Britain & Northern Ireland', 'UK')
+plastics$country <- str_replace_all(plastics$country, 'United States of America', 'USA')
+
+```
+
+```{r fig_company, fig.height = 12, fig.width = 10}
+
+top_5_sources <- plastics %>%
+  filter(!is.na(parent_company)) %>%
+  filter(!parent_company %in% c('null', 'NULL', 'Unbranded')) %>%
+  group_by(parent_company) %>%
+  summarize(n = n(), total_pol = sum(grand_total, na.rm = TRUE)) %>%
+  slice_max(n, n = 5)
+
+pol_by_country_comp <- plastics %>%
+  filter(!country == 'EMPTY') %>%
+  filter(parent_company %in% top_5_sources$parent_company) %>%
+  group_by(parent_company, country) %>%
+  summarize(total_pol = sum(grand_total, na.rm = TRUE)) %>%
+  filter(total_pol > 20)
+
+pol_by_country_comp_tidier <- pol_by_country_comp %>%
+  ungroup() %>%
+  gather_set_data(x = 1:2, id_name = "id")
+pol_by_country_comp_tidier$x <- factor(pol_by_country_comp_tidier$x,
+                                     levels = c('parent_company', 'country'))
+
+p <- pol_by_country_comp_tidier %>%
+  ggplot(aes(x = x, id = id, split = y, value = total_pol)) +
+  geom_parallel_sets(aes(fill = parent_company),
+                     alpha = 0.6, color = NA) +
+  geom_parallel_sets_axes(axis.width = 0.1) +
+  geom_parallel_sets_labels(color = NA, angle = 0, hjust = 0) +
+#  scale_fill_brewer(palette = 'YlGnBu') +
+  scale_fill_manual(values = pal) +
+  guides(fill = FALSE) +
+  theme_void() +
+  theme(text = element_text(family = 'Lato'))
+
+labeldata <- ggplot_build(p)$data[[3]]  # grab data for the third layer (parallel_sets_labels)
+
+# add company labels
+p + geom_text(data = labeldata %>%
+                filter(label %in% top_5_sources$parent_company),
+              aes(x, y, label = label),
+              inherit.aes = FALSE,
+              nudge_x = -0.35,
+              family = 'Lato', size = 5) +
+  # add country labels
+  geom_text(data = labeldata %>%
+                filter(label %in% unique(pol_by_country_comp$country)),
+              aes(x, y, label = label),
+              inherit.aes = FALSE,
+              nudge_x = 0.2,
+              family = 'Lato', size = 5)
+
+
+```
+
+  
