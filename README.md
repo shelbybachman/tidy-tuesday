@@ -1,4 +1,4 @@
-# shelby's tidy tuesday projects
+# shelby's tidy tuesday visualizations
 
 <br>
 
