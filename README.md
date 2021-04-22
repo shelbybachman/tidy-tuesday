@@ -2,6 +2,8 @@
 
 <br>
 
+[2021-04-21](https://shelbybachman.github.io/tidy-tuesday/2021-04-20.html): Netflix movies over time
+
 [2021-01-26](https://shelbybachman.github.io/tidy-tuesday/2021-01-26.html): global plastic pollution & pickup
 
 [2021-01-19](https://shelbybachman.github.io/tidy-tuesday/2021-01-19.html): Kenya census
