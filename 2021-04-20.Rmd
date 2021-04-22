@@ -1,0 +1,86 @@
+---
+title: "Netflix movies over time"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2021-04-20"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+  
+<hr>
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(ggpubr)
+
+# color palette
+pal_ratings <- c("G" = "#D9ED92",
+                 "PG" = "#99D98C",
+                 "PG-13" = "#52B69A",
+                 "R" = "#168AAD")
+
+```
+  
+```{r load_data}
+
+data <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-20/netflix_titles.csv') 
+
+data <- data %>%
+  
+  # include only movies with ratings of interest
+  filter(type == 'Movie',
+         ! rating %in% c('NR', 'TV-Y7', 'TV-Y7-FV', 'UR'),
+         !is.na(rating)) %>%
+  
+  # recode rating to be G, PG, PG-13, or R
+  rowwise() %>%
+  mutate(rating_recoded = case_when(
+    rating %in% c('G', 'TV-G', 'TV-Y') ~ 'G',
+    rating %in% c('PG', 'TV-PG') ~ 'PG',
+    rating %in% c('PG-13', 'TV-14') ~ 'PG-13',
+    rating %in% c('R', 'TV-MA', 'NC-17') ~ 'R'
+  )) %>%
+  
+  # extract year added to netflix
+  mutate(year_added = as.integer(str_split(date_added, ', ')[[1]][2])) %>%
+  
+  # include only titles added between 2014 and 2020
+  filter(year_added >= 2014 & year_added <= 2020)
+  
+
+```
+
+```{r summarize_time_rating}
+
+summary_time_ratings <- data %>%
+  group_by(year_added, rating_recoded) %>%
+  summarize(n_movies = n())
+
+```
+
+```{r fig_time_rating, fig.height = 4, fig.width = 7}
+
+ggplot(data = summary_time_ratings, 
+       aes(x = year_added, y = n_movies, fill = rating_recoded)) +
+  geom_area(alpha = 0.7, size = 0.5, colour = 'white') +
+  scale_x_continuous(breaks = 2008:2020) +
+  scale_fill_manual(values = pal_ratings) +
+  labs(x = '', y = 'Number of movies',
+       fill = 'Rating', 
+       title = 'Ratings of movies added to Netflix, 2014-2020') +
+  theme_minimal() + 
+  theme(text = element_text(family = 'Verdana'))
+
+```
+
+  
