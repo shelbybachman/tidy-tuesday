@@ -1,0 +1,67 @@
+---
+title: "California post offices"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2021-04-13"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+  
+Today's dataset comes from Cameron Blevins & Richard Helbock, [https://doi.org/10.7910/DVN/NUKCNA](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/NUKCNA) and includes metrics on US post offices across time. Below, I visualize the establishment of California post offices from 1849 to 1972:
+  
+<hr>
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(ggpubr)
+library(maps)
+library(gganimate)
+
+```
+  
+```{r load_data}
+
+# load data
+data <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-13/post_offices.csv')
+
+# filter data to include CA post offices only
+data <- data %>%
+  filter(state == 'CA') %>%
+  rename(long = longitude, lat = latitude)
+
+# get map data for CA
+CA <- map_data("state") %>% 
+  filter(region == "california")
+
+```
+
+```{r fig_postoffices, dev = 'png', interval = 0.2, fig.width = 3, fig.height = 6}
+
+# create a figure that shows establishment of CA post offices across time
+ggplot() +
+  geom_polygon(data = CA, 
+               aes(x = long, y = lat), fill = "grey", alpha = 0.5) +
+  geom_point(data = data, aes(x = long, y = lat, colour = established ), alpha = 0.8) +
+  scale_colour_viridis_c() +
+  guides(colour = FALSE) +
+  coord_map() +
+  theme_void() +
+  theme(text = element_text(family = 'Verdana')) +
+  # animation
+  transition_manual(established, cumulative = TRUE) +
+  ease_aes('linear') +
+  labs(title = '{current_frame}')
+
+```
+
+  
