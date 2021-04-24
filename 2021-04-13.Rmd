@@ -8,7 +8,7 @@ output:
     highlight: default
 ---
   
-Today's dataset comes from Cameron Blevins & Richard Helbock, [https://doi.org/10.7910/DVN/NUKCNA](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/NUKCNA) and includes metrics on US post offices across time. Below, I visualize the establishment of California post offices from 1849 to 1972:
+Today's dataset comes from Cameron Blevins & Richard Helbock ([source](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/NUKCNA)) and includes metrics on US post offices across time. Below, I visualize the establishment of California post offices from 1849 to 1972:
   
 <hr>
 
@@ -45,7 +45,7 @@ CA <- map_data("state") %>%
 
 ```
 
-```{r fig_postoffices, dev = 'png', interval = 0.2, fig.width = 3, fig.height = 6}
+```{r fig_postoffices, dev = 'png', interval = 0.2, fig.width = 3, fig.height = 4}
 
 # create a figure that shows establishment of CA post offices across time
 ggplot() +
