@@ -1,0 +1,73 @@
+---
+title: "Super Bowl Ads"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2021-03-02"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+  
+Today's data comes from [FiveThirtyEight](https://github.com/fivethirtyeight/superbowl-ads) and includes metrics on commericals during all 21 Super Bowls in the 2000s. 
+
+year
+top brands
+patriotic
+shows product quickly
+contains celebrity
+contains danger
+contains animals
+uses sexuality
+
+<hr>
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(dplyr)
+library(ggplot2)
+library(wesanderson)
+library(ggpubr)
+
+# color palette
+pal <- c()
+
+```
+  
+```{r load_data}
+
+youtube <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-02/youtube.csv')
+
+```
+
+#### Which brands showed the most ads?
+
+```{r fig_brands}
+
+p_brands <- youtube %>%
+  group_by(brand) %>%
+  summarize(n_ads = n()) %>%
+  arrange(desc(n_ads)) %>%
+  ggplot(aes(x = brand, y = n_ads)) +
+  geom_segment(aes(xend = brand, yend = 0)) +
+  geom_point(colour = wes_palette("GrandBudapest2")[4], size = 4) +
+  labs(x = '', y = 'Number of ads', colour = '') +
+  coord_flip() +
+  theme_pubr() +
+  theme(text = element_text(size=12,  family='Lato'),
+      axis.text.x = element_text(size = 10, family='Lato'),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_text(size = 10, family='Lato'),
+      axis.ticks.y = element_blank(),
+      plot.title = element_text(face = 'bold', hjust = 0))
+p_brands
+
+```
+
+
+
+  
