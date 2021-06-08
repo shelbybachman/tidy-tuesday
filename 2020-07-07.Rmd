@@ -1,0 +1,157 @@
+---
+title: "Coffee Ratings"
+author: "Shelby Bachman"
+subtitle: Tidy Tuesday 2020-07-07
+output: 
+  html_document:
+    theme: flatly
+    highlight: zenburn
+---
+
+I created this report while following R Ladies Freiburg's "Guided Tidy Tuesday" meetup on 2021-06-08. Today's data can be found [here]() and comes from the [Coffee Quality Database](https://github.com/jldbc/coffee-quality-database); it includes reviews of multiple features of coffee beans from around the world.
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE,
+                      dpi = 400)
+
+library(tidyverse)
+library(ggpubr)
+
+```
+
+```{r load_data}
+
+coffee <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv')
+
+```
+
+## Data summary
+
+We can see that each row in the data corresponds to a **coffee bean**, and the columns reflect details of that coffee bean, including information about where it is produced and features rated for that bean:
+
+```{r summarize_data}
+
+# a few options for summarizing the data (output hidden)
+#head(coffee)
+#str(coffee)
+knitr::kable(skimr::skim(coffee) %>% 
+               slice_head(n = 5) %>% # 5 character variables
+               select(skim_type:complete_rate, character.min:character.whitespace))
+knitr::kable(skimr::skim(coffee) %>%
+               slice_tail(n = 5) %>% # 5 numeric variables
+               select(skim_type:complete_rate, numeric.mean:numeric.hist))
+
+```
+
+## Fixing data types
+
+We notice that `species` and `country_of_origin` are characters but we would like to work with them as factors, so we convert these variables:
+
+```{r convert_types}
+
+coffee <- coffee %>%
+  mutate(across(c(country_of_origin, species), as_factor))
+
+```
+
+## Plots
+
+```{r plot_altitude_rating_species, fig.width = 8, fig.height = 6}
+
+ggplot(data = coffee %>% 
+         # leave out apparent outliers on both axes
+         filter(altitude_mean_meters < 4500,
+                total_cup_points > 50),
+       aes(x = altitude_mean_meters, y = total_cup_points,
+           colour = species)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  scale_colour_manual(values = c('Arabica' = '#87BBA2',
+                                 'Robusta' = '#EDB458')) +
+  labs(x = 'Altitude (meters)', y = 'Total cup points',
+       colour = 'Species',
+       title = 'Coffee bean ratings by altitude and species',
+       caption = 'Data source: Tidy Tuesday') +
+  theme_classic()
+
+```
+
+```{r plot_altitude_rating_country, fig.width = 8, fig.height = 6}
+
+#return top 4 most frequent countries
+#coffee %>%
+#  count(country_of_origin, sort = TRUE) %>%
+#  slice_head(n = 4) 
+
+# add new column with frequency by country
+coffee <- coffee %>%
+  add_count(country_of_origin, name = 'country_n')
+
+ggplot(data = coffee %>% 
+         # leave out apparent outliers on both axes
+         filter(altitude_mean_meters < 4500,
+                total_cup_points > 50) %>%
+         # using 4 most frequent countries only
+         #filter(country_of_origin %in% c('Mexico', 'Colombia', 'Guatemala', 'Brazil')),
+         # using countries with more than 100 bean entries
+         filter(country_n > 100),
+       aes(x = altitude_mean_meters, y = total_cup_points,
+           colour = country_of_origin)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  scale_colour_brewer(palette = 'Set2') +
+  labs(x = 'Altitude (meters)', y = 'Total cup points',
+       colour = 'Country of origin',
+       title = 'Coffee bean ratings by altitude and country of origin',
+       caption = 'Data source: Tidy Tuesday') +
+  theme_classic()
+
+```
+
+```{r plot_hist_features, fig.width = 8, fig.height = 4}
+
+# custom color palette
+pal_species <- c('seagreen', 'steelblue')
+
+
+fig_ratings <- ggarrange(
+  ggplot(data = coffee, 
+       aes(x = aroma, fill = species, colour = species)) +
+  geom_density(alpha = 0.3) +
+  scale_colour_manual(values = pal_species) +
+  scale_fill_manual(values = pal_species) +
+  labs(x = 'Aroma', y = 'Density',
+       colour = 'Species', fill = 'Species',
+       subtitle = 'Aroma') +
+  theme_classic(),
+  ggplot(data = coffee, 
+       aes(x = sweetness, fill = species, colour = species)) +
+  geom_density(alpha = 0.3) +
+  scale_colour_manual(values = pal_species) +
+  scale_fill_manual(values = pal_species) +
+  labs(x = 'Sweetness', y = 'Density',
+       colour = 'Species', fill = 'Species',
+       subtitle = 'Sweetness') +
+  theme_classic(),
+  ggplot(data = coffee, 
+       aes(x = acidity, fill = species, colour = species)) +
+  geom_density(alpha = 0.3) +
+  scale_colour_manual(values = pal_species) +
+  scale_fill_manual(values = pal_species) +
+  labs(x = 'Acidity', y = 'Density',
+       colour = 'Species', fill = 'Species',
+       subtitle = 'Acidity') +
+  theme_classic(),
+  
+  nrow = 1, ncol = 3, common.legend = TRUE, legend = 'right'
+)
+
+annotate_figure(fig_ratings,
+                top = text_grob('Coffee feature ratings by species'),
+                fig.lab = 'Data source: Tidy Tuesday',
+                fig.lab.pos = 'bottom.right', fig.lab.size = 8)
+
+```
