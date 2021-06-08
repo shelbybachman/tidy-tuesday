@@ -1,14 +1,14 @@
 ---
-title: "Coffee Ratings"
+title: "Coffee Bean Ratings"
 author: "Shelby Bachman"
-subtitle: Tidy Tuesday 2020-07-07
+subtitle: 'Tidy Tuesday 2020-07-07'
 output: 
   html_document:
     theme: flatly
     highlight: zenburn
 ---
 
-I created this report while following R Ladies Freiburg's "Guided Tidy Tuesday" meetup on 2021-06-08. Today's data can be found [here]() and comes from the [Coffee Quality Database](https://github.com/jldbc/coffee-quality-database); it includes reviews of multiple features of coffee beans from around the world.
+I created this report while following R Ladies Freiburg's "Guided Tidy Tuesday" meetup on 2021-06-08. Today's data can be found [here](https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv) and comes from the [Coffee Quality Database](https://github.com/jldbc/coffee-quality-database); it includes reviews of multiple features of coffee beans from around the world.
 
 ```{r setup, include = FALSE}
 
