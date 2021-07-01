@@ -2,6 +2,10 @@
 
 <br>
 
+[2021-06-22](https://shelbybachman.github.io/tidy-tuesday/2021-06-22.html): Public park access
+
+[2021-04-27](https://shelbybachman.github.io/tidy-tuesday/2021-04-27.html): CEO departures
+
 [2021-04-20](https://shelbybachman.github.io/tidy-tuesday/2021-04-20.html): Netflix movies over time
 
 [2021-04-13](https://shelbybachman.github.io/tidy-tuesday/2021-04-13.html): California post offices
