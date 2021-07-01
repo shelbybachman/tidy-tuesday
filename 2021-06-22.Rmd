@@ -1,0 +1,54 @@
+---
+title: "Public park access"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2021-06-22"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+  
+<hr>
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(tidyverse)
+
+```
+  
+```{r load_data, fig.width = 12, fig.height = 7}
+
+parks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-22/parks.csv')
+
+```
+
+```{r fig, fig.width = 12, fig.height = 7}
+
+parks %>%
+  filter(year == 2020) %>%
+  ggplot(aes(x = med_park_size_points, 
+             y = pct_near_park_points)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = FALSE, 
+              colour = 'turquoise', lwd = 0.8) +
+  ggrepel::geom_text_repel(aes(label = city),
+                           family = 'Lato',
+                           max.overlaps = 5) +
+  labs(x = 'Median park size',
+       y = '% of residents within a 10-minute walk to a park',
+       title = 'Park size & park accessibility', 
+       caption = 'Plot based on 2020 data. Source: The Trust for Public Land.') +
+  ggpubr::theme_pubr() +
+  theme(text = element_text(family = 'Lato'), 
+        plot.title = element_text(family = 'Lato', 
+                                  face = 'bold', hjust = 0.5), 
+        plot.caption = element_text(family = 'Lato'))
+
+```
+
+  
