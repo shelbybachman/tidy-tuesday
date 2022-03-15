@@ -1,0 +1,185 @@
+---
+title: "Erasmus exchange program participation"
+author: "Shelby Bachman"
+subtitle: "Tidy Tuesday 2021-03-08"
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggforce)
+library(ggplot2)
+
+```
+  
+```{r load_data}
+
+erasmus <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-03-08/erasmus.csv')
+
+erasmus <- erasmus %>%
+  select(project_reference, 
+         mobility_start_month, mobility_end_month,
+         sending_country_code, receiving_country_code) %>%
+  rowwise() %>%
+  mutate(start_year = as.numeric(str_split(mobility_start_month, '-')[[1]][1]),
+         end_year = as.numeric(str_split(mobility_end_month, '-')[[1]][1]))
+
+```
+
+Today's data comes from [Data.Europa](https://data.europa.eu/data/datasets?locale=en&catalog=eac&query=erasmus&page=1&sort=issued%2Bdesc,%20relevance%2Bdesc,%20title.en%2Basc) courtsey of [Data Is Plural](https://www.data-is-plural.com/archive/2022-02-09-edition/) and includes metrics on participation in the Erasmus exchange program at EU universities from the years `r range(erasmus$start_year)`. I was particularly interested in exploring the most popular destinations of students from each country, so I used the `ggforce` package to examine sending countries (left) versus receiving countries (right) for Erasmus program participants. I restricted the data to cases where students visited a university outside their home country.
+
+<hr>
+
+Since there are a lot of countries, I first examined the <u>destination countries</u> for students from the 5 countries that sent the most students on exchange visits.
+
+```{r fig_receiving, fig.height = 12, fig.width = 10}
+
+# determine 5 countries with most participants
+top_countries <- erasmus %>%
+  # only include international exchanges
+  filter(sending_country_code != receiving_country_code) %>%
+  group_by(sending_country_code) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  ungroup() %>%
+  slice_head(n=5)
+
+# create a custom color palette based on the top 5 countries
+countries_pal <- c('DE' = '#000000', 
+                   'ES' = '#ffc400',
+                   'IT' = '#009246', 
+                   'PL' = '#dc143c',
+                   'UK' = '#00247d')
+
+# tally counts of destinations by origin country
+# format data for ggforce
+erasmus_tidier <- erasmus %>%
+  # only include international exchanges
+  filter(sending_country_code != receiving_country_code) %>%
+  # only include top 5 countries as determined above
+  filter(sending_country_code %in% top_countries$sending_country_code) %>%
+  group_by(sending_country_code, receiving_country_code) %>%
+  summarize(freq = n()) %>%
+  ungroup() %>%
+  gather_set_data(x = 1:2) %>%
+  arrange(x, sending_country_code, receiving_country_code)
+erasmus_tidier$x <- factor(erasmus_tidier$x,
+                           levels = c('sending_country_code', 'receiving_country_code'))
+
+# create parallel sets plot
+# showing destination countries by origin
+p <- ggplot(data = erasmus_tidier,
+         aes(x = x, id = id, split = y, value = freq)) +
+  geom_parallel_sets(aes(fill = sending_country_code),
+                     alpha = 0.6, color = NA) +
+  geom_parallel_sets_axes(axis.width = 0.1) +
+  geom_parallel_sets_labels(color = NA, angle = 0, hjust = 0) +
+  scale_fill_manual(values = countries_pal) +
+  theme_void() +
+  labs(subtitle = 'Receiving countries for students from the 5 countries\nthat send the most students on Erasmus visits') +
+  theme(text = element_text(family = 'Lato'), 
+        plot.subtitle = element_text(hjust = 0.5),
+        legend.position = 'none')
+
+labeldata <- ggplot_build(p)$data[[3]]  # grab data for the third layer (parallel_sets_labels)
+
+# add company labels
+p +  # add origin country labels
+  geom_text(data = labeldata %>%
+              filter(PANEL == 1, x == 1),
+              aes(x, y, label = label),
+              inherit.aes = FALSE,
+              nudge_x = -0.1,
+              family = 'Lato', size = 3) +
+  geom_text(data = labeldata %>%
+              filter(PANEL == 1, x == 2),
+              aes(x, y, label = label),
+              inherit.aes = FALSE,
+              nudge_x = 0.1,
+              family = 'Lato', size = 3)
+
+```
+
+Next, I examined the 5 most commonly visited countries and examined the distribution of which countries those students visited from from.
+
+```{r fig_sending, fig.height = 12, fig.width = 10}
+
+# determine 5 countries with most visitors
+top_countries <- erasmus %>%
+  # only include international exchanges
+  filter(sending_country_code != receiving_country_code) %>%
+  group_by(receiving_country_code) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  ungroup() %>%
+  slice_head(n=5)
+
+# create a custom color palette based on the top 5 countries
+countries_pal_2 <- c('FR' = '#002395', 
+                   'BE' = '#ed2939',
+                   'ES' = '#ffc400', 
+                   'DE' = '#000000',
+                   'IT' = '#009246')
+
+# tally counts of destinations by origin country
+# format data for ggforce
+erasmus_tidier <- erasmus %>%
+  # only include international exchanges
+  filter(sending_country_code != receiving_country_code) %>%
+  # only include top 5 countries as determined above
+  filter(receiving_country_code %in% top_countries$receiving_country_code) %>%
+  group_by(sending_country_code, receiving_country_code) %>%
+  summarize(freq = n()) %>%
+  ungroup() %>%
+  gather_set_data(x = 1:2) %>%
+  arrange(x, sending_country_code, receiving_country_code)
+erasmus_tidier$x <- factor(erasmus_tidier$x,
+                           levels = c('sending_country_code', 'receiving_country_code'))
+
+# create parallel sets plot
+# showing destination countries by origin
+p <- ggplot(data = erasmus_tidier,
+         aes(x = x, id = id, split = y, value = freq)) +
+  geom_parallel_sets(aes(fill = sending_country_code),
+                     alpha = 0.6, color = NA) +
+  geom_parallel_sets_axes(axis.width = 0.1) +
+  geom_parallel_sets_labels(color = NA, angle = 0, hjust = 0) +
+  scale_fill_manual(values = countries_pal_2) +
+  theme_void() +
+  labs(subtitle = 'Sending countries for students who visit the 5 countries\nthat receive the most students on Erasmus visits') +
+  theme(text = element_text(family = 'Lato'), 
+        plot.subtitle = element_text(hjust = 0.5),
+        legend.position = 'none')
+
+labeldata <- ggplot_build(p)$data[[3]]  # grab data for the third layer (parallel_sets_labels)
+
+# add company labels
+p +  # add origin country labels
+  geom_text(data = labeldata %>%
+              filter(PANEL == 1, x == 1),
+              aes(x, y, label = label),
+              inherit.aes = FALSE,
+              nudge_x = -0.1,
+              family = 'Lato', size = 3) +
+  geom_text(data = labeldata %>%
+              filter(PANEL == 1, x == 2),
+              aes(x, y, label = label),
+              inherit.aes = FALSE,
+              nudge_x = 0.1,
+              family = 'Lato', size = 3)
+
+```
+
+
+  
