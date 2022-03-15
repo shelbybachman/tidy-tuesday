@@ -1,7 +1,7 @@
 ---
 title: "Erasmus exchange program participation"
 author: "Shelby Bachman"
-subtitle: "Tidy Tuesday 2021-03-08"
+subtitle: "Tidy Tuesday 2022-03-08"
 output:
   html_document:
     theme: flatly
