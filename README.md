@@ -32,4 +32,4 @@
 
 [2020-08-18](https://shelbybachman.github.io/tidy-tuesday/2020/2020-08-18.html): threats & responses to plant extinction worldwide
 
-[2020-07-07](https://shelbybachman.github.io/tidy-tuesady/2020/2020-07-07.html): coffee bean ratings
+[2020-07-07](https://shelbybachman.github.io/tidy-tuesday/2020/2020-07-07.html): coffee bean ratings
