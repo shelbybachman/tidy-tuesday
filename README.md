@@ -2,6 +2,8 @@
 
 <br>
 
+[2022-05-10](https://shelbybachman.github.io/tidy-tuesday/2022/2022-05-10.html): books on the NYT bestseller list
+
 [2022-03-08](https://shelbybachman.github.io/tidy-tuesday/2022/2022-03-08.html): Erasmus exchange program participation
 
 [2021-06-22](https://shelbybachman.github.io/tidy-tuesday/2021/2021-06-22.html): public park access
