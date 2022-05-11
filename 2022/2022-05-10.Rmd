@@ -1,0 +1,139 @@
+---
+title: ""
+output:
+  html_document:
+    theme: flatly
+    highlight: default
+---
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+
+rm(list = ls())
+library(tidyverse)
+
+```
+  
+```{r load_data}
+
+nyt_titles <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-10/nyt_titles.tsv') %>%
+  filter(year < 2020)
+
+```
+
+```{r aggregate_data}
+
+# function to find decade (char) based on year (integer)
+find_decade <- function(year) {
+  year_str <- as.character(year)
+  if (year < 2000) {
+    #year_str[3] # extracts decade
+    decade <- paste('19', substring(year_str, 3, 3), '0s', sep = '')
+  } else if (year >= 2000) {
+    #year_str[3] # extracts decade
+    decade <- paste('20', substring(year_str, 3, 3), '0s', sep = '')
+  }
+  return(decade)
+}
+
+# add decade column
+nyt_titles <- nyt_titles %>%
+  rowwise() %>%
+  mutate(decade = find_decade(year))
+
+# for each decade, find title that was on the bestseller list for longest
+top_per_decade <- nyt_titles %>%
+  select(decade, title, total_weeks) %>%
+  group_by(decade) %>%
+  arrange(total_weeks, .by_group = TRUE) %>%
+  top_n(1) %>%
+  # grab author and total_weeks data for these titles
+  # from original dataframe
+  left_join(nyt_titles %>%
+              select(title, author, year, debut_rank, best_rank)) %>%
+  rowwise() %>%
+  mutate(title = str_to_title(title),
+         rank_text = str_c('Debut rank: ', debut_rank, 
+                           ', Highest rank: ', best_rank, sep = ''))
+
+# go back to the original data and filter to include 
+# only titles on the bestseller list for more than 20 weeks
+only_top_titles <- nyt_titles %>%
+  filter(total_weeks > 20)
+
+```
+
+```{r figure}
+
+# set factor levels for decade variable
+only_top_titles$decade <- factor(only_top_titles$decade,
+                                 levels = c('1930s', '1940s', '1950s',
+                                            '1960s', '1970s', '1980s', 
+                                            '1990s', '2000s', '2010s'))
+
+# plot top bestsellers, emphasizing the longest on the list in each decade
+fig_top_titles <- ggplot(only_top_titles,
+       aes(x = total_weeks, y = year)) +
+  geom_point(alpha = 0.5, shape = 21, size = 0.5,
+             colour ='#DAA520', fill = '#EEB422') +
+  labs(x = 'Total weeks on NYT bestseller list') +
+  geom_point(data = top_per_decade,
+             aes(x = total_weeks, y = year),
+             shape = 21, size = 0.5,
+             colour = 'black', fill = '#EEB422') +
+  geom_text(data = top_per_decade,
+            aes(x = total_weeks, y = year, label = title),
+                size = 1.5, hjust = 0, fontface = 'bold',
+                nudge_y = 1, nudge_x = 1) +
+  geom_text(data = top_per_decade,
+            aes(x = total_weeks, y = year, label = author),
+                size = 1.5, hjust = 0,
+                nudge_y = 0, nudge_x = 1) +
+  geom_text(data = top_per_decade,
+            aes(x = total_weeks, y = year, label = rank_text),
+                size = 1.5, hjust = 0,
+                nudge_y = -1, nudge_x = 1) +
+  facet_wrap(~decade,
+             nrow = 10, ncol = 1, 
+             scales = 'free_y', shrink = TRUE,
+             strip.position = 'left') +
+  coord_cartesian(xlim = c(20, 200)) +
+  scale_y_reverse() +
+  labs(y = '',
+       title = 'Books on the NYT bestseller list by decade',
+       subtitle = 'Points indicate books that stayed on the bestseller list for >20 weeks') +
+  theme_minimal() +
+  theme(strip.text.y.left = element_text(angle = 0, size = 8),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(), 
+        panel.grid = element_blank(),
+        title = element_text(size = 10),
+        plot.subtitle = element_text(size = 8),
+        axis.title.x = element_text(size = 8))
+
+fig_top_titles <- ggpubr::annotate_figure(fig_top_titles,
+                        fig.lab.pos = 'bottom.right',
+                        fig.lab = 'Source: Post45 Data / Created by Shelby Bachman',
+                        fig.lab.size = 6)
+
+# save the figure
+ggsave(filename = here::here('2022', '2022-05-10.png'),
+       plot = fig_top_titles, 
+       width = 6.5, height = 8, dpi = 600,
+       bg = 'white'
+       )
+
+```
+
+```{r show_fig, fig.width = 6.5, fig.height = 8}
+
+fig_top_titles
+
+```
+
+
+
+  
